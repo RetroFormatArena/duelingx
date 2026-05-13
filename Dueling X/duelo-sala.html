@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crear Sala - DuelingX</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    body { min-height: 100vh; display: flex; flex-direction: column; }
+
+    .nav {
+      display: flex; align-items: center; gap: 16px;
+      padding: 10px 24px;
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .nav-logo { font-size: 1.2rem; font-weight: 700; color: var(--color-primary); margin-right: auto; }
+    .nav button { padding: 6px 14px; font-size: 0.85rem; margin-top: 0; }
+
+    .contenido {
+      flex: 1; padding: 40px 32px;
+      max-width: 860px; margin: 0 auto; width: 100%;
+    }
+
+    .titulo-seccion { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
+    .subtitulo { color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: 32px; }
+
+    .pronto-badge {
+      display: inline-block;
+      background: rgba(255,170,0,0.1);
+      border: 1px solid rgba(255,170,0,0.3);
+      color: var(--color-warning);
+      font-size: 0.75rem; font-weight: 700;
+      padding: 4px 12px; border-radius: 20px;
+      margin-bottom: 24px; letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .sala-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .panel-titulo {
+      font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--color-text-muted); margin-bottom: 16px;
+    }
+
+    .opcion-tipo {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-bottom: 16px;
+    }
+
+    .tipo-btn {
+      padding: 12px; border-radius: var(--radius);
+      border: 1px solid var(--color-border);
+      background: transparent; color: var(--color-text);
+      font-size: 0.85rem; cursor: pointer;
+      transition: all 0.15s; text-align: center;
+    }
+
+    .tipo-btn.activo {
+      border-color: var(--color-success);
+      color: var(--color-success);
+      background: rgba(0,204,136,0.08);
+    }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+      display: block; font-size: 0.8rem;
+      color: var(--color-text-muted); margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+
+    /* Código de sala */
+    .codigo-sala {
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .codigo-sala .codigo {
+      font-size: 1.8rem; font-weight: 700; letter-spacing: 0.3em;
+      color: var(--color-success); font-family: monospace;
+      background: rgba(0,204,136,0.08);
+      border: 1px solid rgba(0,204,136,0.2);
+      border-radius: var(--radius);
+      padding: 10px 16px; flex: 1; text-align: center;
+    }
+
+    /* Lista de salas públicas */
+    .lista-salas {
+      display: flex; flex-direction: column; gap: 8px;
+      max-height: 340px; overflow-y: auto;
+    }
+
+    .sala-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+    }
+
+    .sala-item .sala-info { flex: 1; }
+    .sala-item .sala-nombre { font-weight: 600; color: var(--color-text); }
+    .sala-item .sala-meta { color: var(--color-text-muted); font-size: 0.78rem; margin-top: 2px; }
+    .sala-item .sala-formato {
+      font-size: 0.72rem; font-weight: 700; padding: 2px 8px;
+      border-radius: 20px; background: rgba(0,195,255,0.1);
+      color: var(--color-primary); border: 1px solid rgba(0,195,255,0.2);
+    }
+
+    .btn-crear {
+      width: 100%; margin-top: 16px;
+      background: var(--color-success); color: #000;
+      font-weight: 700; padding: 12px;
+    }
+
+    .btn-unirse {
+      padding: 6px 12px; font-size: 0.78rem; margin-top: 0;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+
+    .salas-vacias {
+      text-align: center; color: var(--color-text-muted);
+      padding: 32px; font-size: 0.85rem;
+    }
+
+    .config-resumen {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 12px 16px; margin-bottom: 16px;
+      font-size: 0.82rem;
+    }
+    .config-resumen .fila {
+      display: flex; justify-content: space-between;
+      padding: 3px 0;
+    }
+    .config-resumen .fila span:first-child { color: var(--color-text-muted); }
+    .config-resumen .fila span:last-child { color: var(--color-primary); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <span class="nav-logo">DuelingX</span>
+    <a href="duelo-lobby.html"><button class="btn-secondary">← Volver</button></a>
+  </nav>
+
+  <div class="contenido">
+    <div class="pronto-badge">⏳ Próximamente</div>
+    <div class="titulo-seccion">Salas de Duelo</div>
+    <div class="subtitulo">Crea una sala o únete a una existente.</div>
+
+    <div class="sala-layout">
+
+      <!-- Panel izquierdo: Crear sala -->
+      <div class="panel">
+        <div class="panel-titulo">Crear Sala</div>
+
+        <div class="config-resumen" id="config-resumen">
+          <div class="fila"><span>Formato</span><span id="r-formato">—</span></div>
+          <div class="fila"><span>Deck</span><span id="r-deck">—</span></div>
+          <div class="fila"><span>Modalidad</span><span id="r-modalidad">—</span></div>
+        </div>
+
+        <div class="form-group">
+          <label>Tipo de sala</label>
+          <div class="opcion-tipo">
+            <button class="tipo-btn activo" onclick="toggleTipo(this, 'publica')">🌐 Pública</button>
+            <button class="tipo-btn" onclick="toggleTipo(this, 'privada')">🔒 Privada</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Nombre de la sala</label>
+          <input type="text" placeholder="Ej: Duelo amistoso Goat" disabled />
+        </div>
+
+        <div class="form-group" id="grupo-codigo" style="display:none">
+          <label>Código de sala (se genera al crear)</label>
+          <div class="codigo-sala">
+            <div class="codigo">— — — — — —</div>
+            <button class="btn-secondary" style="padding:10px; margin-top:0" disabled>📋</button>
+          </div>
+        </div>
+
+        <button class="btn-crear" disabled>Crear Sala</button>
+      </div>
+
+      <!-- Panel derecho: Salas públicas -->
+      <div class="panel">
+        <div class="panel-titulo" style="display:flex; justify-content:space-between; align-items:center">
+          Salas Disponibles
+          <button class="btn-secondary" style="padding:4px 10px; font-size:0.78rem; margin-top:0" disabled>🔄 Actualizar</button>
+        </div>
+
+        <div class="form-group">
+          <label>Unirse por código</label>
+          <div style="display:flex; gap:8px">
+            <input type="text" placeholder="Ej: ABC123" maxlength="6" style="text-transform:uppercase; letter-spacing:0.2em; font-weight:700" disabled />
+            <button class="btn-secondary" style="white-space:nowrap; padding:8px 14px; margin-top:0" disabled>Unirse</button>
+          </div>
+        </div>
+
+        <div class="lista-salas">
+          <!-- Ejemplo de sala (placeholder) -->
+          <div class="sala-item">
+            <div class="sala-info">
+              <div class="sala-nombre">Duelo Goat clásico</div>
+              <div class="sala-meta">Casual · Esperando rival</div>
+            </div>
+            <div class="sala-formato">GOAT</div>
+            <button class="btn-unirse" disabled>Unirse</button>
+          </div>
+          <div class="sala-item">
+            <div class="sala-info">
+              <div class="sala-nombre">Ranked Edison BO3</div>
+              <div class="sala-meta">Ranked · Esperando rival</div>
+            </div>
+            <div class="sala-formato">EDISON</div>
+            <button class="btn-unirse" disabled>Unirse</button>
+          </div>
+          <div class="salas-vacias" style="display:none">No hay salas disponibles.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const config = JSON.parse(sessionStorage.getItem("duelo-config") || "{}");
+    document.getElementById("r-formato").textContent   = config.formato   || "—";
+    document.getElementById("r-deck").textContent      = config.deckId    || "—";
+    document.getElementById("r-modalidad").textContent = config.modalidad || "—";
+
+    function toggleTipo(btn, tipo) {
+      document.querySelectorAll(".tipo-btn").forEach(b => b.classList.remove("activo"));
+      btn.classList.add("activo");
+      document.getElementById("grupo-codigo").style.display = tipo === "privada" ? "block" : "none";
+    }
+  </script>
+
+</body>
+</html>

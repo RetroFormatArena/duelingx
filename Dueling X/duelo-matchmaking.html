@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buscar Duelo - DuelingX</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    body { min-height: 100vh; display: flex; flex-direction: column; }
+
+    .nav {
+      display: flex; align-items: center; gap: 16px;
+      padding: 10px 24px;
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .nav-logo { font-size: 1.2rem; font-weight: 700; color: var(--color-primary); margin-right: auto; }
+    .nav button { padding: 6px 14px; font-size: 0.85rem; margin-top: 0; }
+
+    .contenido {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 40px;
+    }
+
+    .matchmaking-box {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 48px 40px;
+      width: 100%; max-width: 480px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .matchmaking-box::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, transparent, #00c3ff, transparent);
+      animation: scanline 2s linear infinite;
+    }
+
+    @keyframes scanline {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .pronto-badge {
+      display: inline-block;
+      background: rgba(255,170,0,0.1);
+      border: 1px solid rgba(255,170,0,0.3);
+      color: var(--color-warning);
+      font-size: 0.75rem; font-weight: 700;
+      padding: 4px 12px; border-radius: 20px;
+      margin-bottom: 24px; letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .matchmaking-icono {
+      font-size: 3rem; margin-bottom: 16px;
+    }
+
+    .matchmaking-titulo {
+      font-size: 1.5rem; font-weight: 700;
+      color: var(--color-primary); margin-bottom: 8px;
+    }
+
+    .matchmaking-desc {
+      color: var(--color-text-muted); font-size: 0.9rem;
+      line-height: 1.6; margin-bottom: 32px;
+    }
+
+    /* Config resumen */
+    .config-resumen {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 28px;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    .config-resumen .fila {
+      display: flex; justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .config-resumen .fila:last-child { border-bottom: none; }
+    .config-resumen .fila span:first-child { color: var(--color-text-muted); }
+    .config-resumen .fila span:last-child { color: var(--color-primary); font-weight: 600; }
+
+    /* Buscando animación (cuando esté activo) */
+    .buscando-ring {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      margin: 0 auto 20px;
+      display: none;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .btn-buscar {
+      width: 100%;
+      background: var(--color-primary);
+      color: #000; font-weight: 700;
+      padding: 14px; font-size: 1rem;
+      border-radius: var(--radius);
+      opacity: 0.4; cursor: not-allowed;
+    }
+
+    .tiempo-espera {
+      margin-top: 12px; font-size: 0.82rem;
+      color: var(--color-text-muted); display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <span class="nav-logo">DuelingX</span>
+    <a href="duelo-lobby.html"><button class="btn-secondary">← Volver</button></a>
+  </nav>
+
+  <div class="contenido">
+    <div class="matchmaking-box">
+      <div class="pronto-badge">⏳ Próximamente</div>
+      <div class="matchmaking-icono">⚔️</div>
+      <div class="matchmaking-titulo">Buscar Duelo</div>
+      <div class="matchmaking-desc">
+        El sistema te emparejará automáticamente con un rival de nivel similar en tu formato. En Casual, cualquier jugador disponible.
+      </div>
+
+      <div class="config-resumen" id="config-resumen">
+        <div class="fila"><span>Formato</span><span id="r-formato">—</span></div>
+        <div class="fila"><span>Deck</span><span id="r-deck">—</span></div>
+        <div class="fila"><span>Modalidad</span><span id="r-modalidad">—</span></div>
+      </div>
+
+      <div class="buscando-ring" id="buscando-ring"></div>
+      <button class="btn-buscar" disabled>Buscar Partida</button>
+      <div class="tiempo-espera" id="tiempo-espera">Buscando rival... 0:00</div>
+    </div>
+  </div>
+
+  <script>
+    const config = JSON.parse(sessionStorage.getItem("duelo-config") || "{}");
+    document.getElementById("r-formato").textContent   = config.formato   || "—";
+    document.getElementById("r-deck").textContent      = config.deckId    || "—";
+    document.getElementById("r-modalidad").textContent = config.modalidad || "—";
+  </script>
+
+</body>
+</html>

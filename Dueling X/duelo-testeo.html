@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Testeo - DuelingX</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background:#080b0f; color:#e0e0f0; font-family:'Segoe UI',sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; user-select:none; }
+
+    /* ── NAV FASES ── */
+    .duel-nav { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:6px 14px; background:#0d1117; border-bottom:1px solid #1e2530; gap:12px; flex-shrink:0; min-height:48px; }
+    .lp-box { display:flex; align-items:center; gap:8px; }
+    .lp-box.rival { justify-content:flex-start; }
+    .lp-box.tuyo  { justify-content:flex-end; }
+    .lp-nombre { font-size:0.72rem; color:#8899aa; text-transform:uppercase; letter-spacing:0.06em; }
+    .lp-valor { font-size:1.3rem; font-weight:700; color:#00c3ff; font-variant-numeric:tabular-nums; min-width:55px; }
+    .lp-valor.danger { color:#ff4444; }
+    .lp-valor.warning { color:#ffaa00; }
+    .lp-btn { background:#1a2030; border:1px solid #2a3040; color:#8899aa; padding:3px 7px; border-radius:4px; font-size:0.7rem; cursor:pointer; margin-top:0; }
+    .lp-btn:hover { color:#fff; border-color:#00c3ff; }
+    .fases { display:flex; gap:3px; align-items:center; }
+    .fase-btn { padding:4px 8px; border-radius:4px; font-size:0.68rem; font-weight:700; cursor:pointer; border:1px solid #2a3040; background:#1a2030; color:#445566; transition:all 0.15s; margin-top:0; }
+    .fase-btn.activa { background:#00c3ff22; border-color:#00c3ff; color:#00c3ff; }
+    .turno-ind { font-size:0.68rem; color:#445566; padding:0 4px; }
+    .btn-vista { background:#1a2030; border:1px solid #2a3040; color:#8899aa; padding:4px 10px; border-radius:4px; font-size:0.7rem; cursor:pointer; margin-top:0; }
+    .btn-vista.activo { border-color:#00c3ff; color:#00c3ff; }
+
+    /* ── LAYOUT PRINCIPAL ── */
+    .duel-main { flex:1; display:grid; grid-template-columns:68px 1fr 230px; overflow:hidden; min-height:0; }
+
+    /* ── PANEL IZQ ── */
+    .panel-izq { background:#0d1117; border-right:1px solid #1e2530; display:flex; flex-direction:column; align-items:center; padding:8px 4px; gap:5px; overflow-y:auto; }
+    .pila-btn { width:52px; display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer; }
+    .pila-img { width:42px; height:58px; border-radius:3px; border:1px solid #2a3040; background:#131820; display:flex; align-items:center; justify-content:center; font-size:0.9rem; position:relative; transition:border-color 0.15s; }
+    .pila-btn:hover .pila-img { border-color:#00c3ff; }
+    .pila-cnt { position:absolute; bottom:2px; right:3px; font-size:0.6rem; font-weight:700; color:#fff; background:rgba(0,0,0,0.75); padding:0 3px; border-radius:2px; }
+    .pila-label { font-size:0.58rem; color:#445566; text-transform:uppercase; letter-spacing:0.05em; text-align:center; }
+    .pila-sep { width:36px; border:none; border-top:1px solid #1e2530; margin:2px 0; }
+    .pila-sec { font-size:0.56rem; color:#2a3a4a; text-transform:uppercase; letter-spacing:0.08em; }
+
+    /* ── CAMPO ── */
+    .campo-wrapper { display:flex; flex-direction:column; overflow:hidden; position:relative; background:#060a0e; }
+    .campo-container { flex:1; perspective:900px; perspective-origin:50% 45%; display:flex; align-items:center; justify-content:center; padding:8px; min-height:0; }
+    .campo-container.flat { perspective:none; }
+    .campo-tablero { width:100%; max-width:660px; display:flex; flex-direction:column; gap:3px; transform-style:preserve-3d; }
+    .campo-container:not(.flat) .campo-tablero { transform:rotateX(12deg); }
+
+    .campo-fila { display:flex; gap:3px; justify-content:center; align-items:center; }
+
+    .zona { width:70px; height:98px; border-radius:4px; border:1px solid #1a2030; background:#0c1018; position:relative; cursor:pointer; transition:border-color 0.15s, box-shadow 0.15s; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; }
+    .zona:hover { border-color:#2a3a4a; }
+    .zona.ocupada:hover { border-color:#00c3ff; box-shadow:0 0 10px rgba(0,195,255,0.15); }
+    .zona.st { background:#080f0c; border-color:#1a2820; }
+    .zona.st:hover { border-color:#00cc8866; }
+    .zona.field { background:#0f0c08; border-color:#2a2010; width:70px; height:98px; }
+    .zona.field:hover { border-color:#cc880066; }
+    .zona img { width:100%; height:100%; object-fit:cover; display:none; }
+    .zona.ocupada img { display:block; }
+    .zona.boca-abajo img { filter:brightness(0.25); }
+    .zona.defensa { transform:rotate(90deg); }
+    .zona-lbl { font-size:0.52rem; color:#1e2d3a; text-transform:uppercase; letter-spacing:0.04em; text-align:center; pointer-events:none; }
+    .zona.ocupada .zona-lbl { display:none; }
+    .zona-stats { position:absolute; bottom:2px; left:0; right:0; text-align:center; font-size:0.55rem; font-weight:700; color:#fff; background:rgba(0,0,0,0.75); padding:1px 0; display:none; }
+    .zona.ocupada:hover .zona-stats { display:block; }
+
+    .lado-rival { transform:rotate(180deg); display:flex; flex-direction:column; gap:3px; }
+    .campo-div { height:2px; background:linear-gradient(90deg,transparent,#1e2530 20%,#2a3540 50%,#1e2530 80%,transparent); margin:1px 0; }
+    .campo-centro { display:flex; align-items:center; justify-content:center; gap:4px; }
+    .campo-centro-line { flex:1; height:1px; background:linear-gradient(90deg,transparent,#1e2530,transparent); }
+
+    /* ── MANO ── */
+    .mano-wrapper { background:#0a0d12; border-top:1px solid #1e2530; padding:6px 10px; display:flex; align-items:center; gap:3px; min-height:86px; overflow-x:auto; flex-shrink:0; }
+    .mano-wrapper::-webkit-scrollbar { height:3px; }
+    .mano-wrapper::-webkit-scrollbar-thumb { background:#2a3040; border-radius:2px; }
+    .mano-lbl { font-size:0.6rem; color:#334455; text-transform:uppercase; letter-spacing:0.06em; writing-mode:vertical-rl; flex-shrink:0; }
+    .carta-mano { width:54px; height:76px; border-radius:4px; border:1px solid #2a3040; cursor:pointer; flex-shrink:0; transition:transform 0.15s, border-color 0.15s, box-shadow 0.15s; position:relative; overflow:hidden; }
+    .carta-mano img { width:100%; height:100%; object-fit:cover; }
+    .carta-mano:hover { transform:translateY(-14px); border-color:#00c3ff; box-shadow:0 8px 20px rgba(0,195,255,0.25); z-index:10; }
+    .mano-empty { color:#2a3a4a; font-size:0.78rem; padding:0 10px; }
+
+    /* ── TESTEO BAR ── */
+    .testeo-bar { display:flex; gap:5px; padding:5px 10px; background:#080b0f; border-top:1px solid #1e2530; flex-shrink:0; align-items:center; flex-wrap:wrap; }
+    .testeo-bar > span { font-size:0.6rem; color:#2a3a4a; text-transform:uppercase; letter-spacing:0.06em; }
+    .tb-btn { padding:4px 9px; font-size:0.68rem; background:#131820; border:1px solid #2a3040; color:#8899aa; border-radius:4px; cursor:pointer; margin-top:0; transition:all 0.15s; }
+    .tb-btn:hover { border-color:#00c3ff; color:#00c3ff; }
+    .tb-btn.danger:hover { border-color:#ff4444; color:#ff4444; }
+    .ctrl-lbl { margin-left:auto; font-size:0.68rem; color:#445566; }
+    .ctrl-lbl strong { color:#aa88ff; }
+
+    /* ── PANEL DER ── */
+    .panel-der { background:#0d1117; border-left:1px solid #1e2530; display:flex; flex-direction:column; overflow:hidden; }
+    .panel-tabs { display:flex; border-bottom:1px solid #1e2530; flex-shrink:0; }
+    .p-tab { flex:1; padding:8px 4px; font-size:0.68rem; text-align:center; cursor:pointer; color:#445566; border-bottom:2px solid transparent; background:none; border-top:none; border-left:none; border-right:none; margin-top:0; border-radius:0; transition:all 0.15s; }
+    .p-tab.activo { color:#00c3ff; border-bottom-color:#00c3ff; }
+    .p-tab:hover:not(.activo) { color:#8899aa; }
+    .panel-body { flex:1; overflow-y:auto; min-height:0; }
+    .panel-body::-webkit-scrollbar { width:3px; }
+    .panel-body::-webkit-scrollbar-thumb { background:#2a3040; border-radius:2px; }
+
+    /* Info */
+    #tab-info { padding:10px; display:flex; flex-direction:column; gap:8px; }
+    .info-img { width:100%; border-radius:5px; border:1px solid #2a3040; }
+    .info-nombre { font-size:0.82rem; font-weight:700; color:#00c3ff; }
+    .info-tipo { font-size:0.68rem; color:#8899aa; }
+    .info-stats { display:flex; gap:8px; font-size:0.7rem; font-weight:700; }
+    .info-stats .atk { color:#ff6644; }
+    .info-stats .def { color:#4488ff; }
+    .info-efecto { font-size:0.68rem; color:#8899aa; line-height:1.5; border-top:1px solid #1e2530; padding-top:8px; }
+    .info-ph { padding:20px 10px; text-align:center; color:#2a3a4a; font-size:0.75rem; }
+
+    /* Chat */
+    #tab-chat { display:none; flex-direction:column; height:100%; }
+    #tab-chat.show { display:flex; }
+    .chat-msgs { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:5px; min-height:0; }
+    .chat-msgs::-webkit-scrollbar { width:3px; }
+    .chat-msgs::-webkit-scrollbar-thumb { background:#2a3040; border-radius:2px; }
+    .chat-msg { font-size:0.72rem; line-height:1.4; }
+    .chat-msg .autor { font-weight:700; color:#00c3ff; }
+    .chat-msg .sistema { color:#445566; font-style:italic; }
+    .chat-in { display:flex; gap:4px; padding:6px 8px; border-top:1px solid #1e2530; flex-shrink:0; }
+    .chat-in input { flex:1; padding:5px 8px; font-size:0.74rem; background:#131820; border:1px solid #2a3040; color:#e0e0f0; border-radius:4px; }
+    .chat-in button { padding:5px 9px; font-size:0.72rem; background:#1a2030; border:1px solid #2a3040; color:#8899aa; border-radius:4px; margin-top:0; cursor:pointer; }
+    .chat-in button:hover { color:#fff; border-color:#00c3ff; }
+
+    /* Log */
+    #tab-log { display:none; flex-direction:column; height:100%; }
+    #tab-log.show { display:flex; }
+    .log-list { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:3px; min-height:0; }
+    .log-list::-webkit-scrollbar { width:3px; }
+    .log-list::-webkit-scrollbar-thumb { background:#2a3040; border-radius:2px; }
+    .log-item { font-size:0.66rem; color:#445566; padding:2px 6px; border-left:2px solid #1e2530; line-height:1.4; }
+    .log-item.tuyo { border-left-color:#00c3ff44; color:#8899aa; }
+    .log-item.rival { border-left-color:#ff884444; color:#8899aa; }
+    .log-item.sistema { font-style:italic; }
+
+    /* ── MENÚ CONTEXTUAL ── */
+    .ctx-menu { position:fixed; background:#0d1117; border:1px solid #2a3040; border-radius:6px; padding:4px; z-index:1000; display:none; flex-direction:column; gap:2px; min-width:158px; box-shadow:0 8px 24px rgba(0,0,0,0.7); }
+    .ctx-menu.show { display:flex; }
+    .ctx-btn { padding:6px 10px; font-size:0.72rem; background:none; border:none; color:#8899aa; text-align:left; cursor:pointer; border-radius:4px; margin-top:0; transition:background 0.1s, color 0.1s; }
+    .ctx-btn:hover { background:#1a2030; color:#fff; }
+    .ctx-btn.red:hover { background:#ff444422; color:#ff4444; }
+    .ctx-btn.green:hover { background:#00cc8822; color:#00cc88; }
+    .ctx-sep { border:none; border-top:1px solid #1e2530; margin:2px 0; }
+
+    /* ── MODAL PILA ── */
+    .pila-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:2000; display:none; align-items:center; justify-content:center; }
+    .pila-overlay.show { display:flex; }
+    .pila-box { background:#0d1117; border:1px solid #2a3040; border-radius:8px; padding:16px; width:460px; max-height:68vh; display:flex; flex-direction:column; gap:10px; }
+    .pila-header { display:flex; justify-content:space-between; align-items:center; }
+    .pila-titulo { font-size:0.88rem; font-weight:700; color:#00c3ff; }
+    .pila-close { background:none; border:none; color:#445566; cursor:pointer; font-size:1.1rem; margin-top:0; }
+    .pila-close:hover { color:#fff; }
+    .pila-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:5px; overflow-y:auto; }
+    .pila-carta { aspect-ratio:3/4; border-radius:3px; border:1px solid #2a3040; background:#131820; cursor:pointer; overflow:hidden; transition:border-color 0.15s; }
+    .pila-carta:hover { border-color:#00c3ff; }
+    .pila-carta img { width:100%; height:100%; object-fit:cover; }
+    .pila-empty { color:#445566; font-size:0.78rem; grid-column:1/-1; text-align:center; padding:20px; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="duel-nav">
+  <div class="lp-box rival">
+    <div><div class="lp-nombre">Rival (Testeo)</div><div class="lp-valor" id="lp-rival">8000</div></div>
+    <button class="lp-btn" onclick="ajLP('rival',-100)">-100</button>
+    <button class="lp-btn" onclick="ajLP('rival',+100)">+100</button>
+    <button class="lp-btn" onclick="ajLPx('rival')">✎</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+    <div class="fases">
+      <span class="turno-ind" id="turno-ind">Tu turno</span>
+      <button class="fase-btn activa" id="f-DP" onclick="setFase('DP')">DP</button>
+      <button class="fase-btn" id="f-SP" onclick="setFase('SP')">SP</button>
+      <button class="fase-btn" id="f-M1" onclick="setFase('M1')">M1</button>
+      <button class="fase-btn" id="f-BP" onclick="setFase('BP')">BP</button>
+      <button class="fase-btn" id="f-M2" onclick="setFase('M2')">M2</button>
+      <button class="fase-btn" id="f-EP" onclick="setFase('EP')">EP</button>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn-vista activo" id="btn3d" onclick="setVista('3d')">3D</button>
+      <button class="btn-vista" id="btn2d" onclick="setVista('2d')">2D</button>
+    </div>
+  </div>
+
+  <div class="lp-box tuyo">
+    <button class="lp-btn" onclick="ajLPx('tuyo')">✎</button>
+    <button class="lp-btn" onclick="ajLP('tuyo',+100)">+100</button>
+    <button class="lp-btn" onclick="ajLP('tuyo',-100)">-100</button>
+    <div style="text-align:right"><div class="lp-nombre">Tú</div><div class="lp-valor" id="lp-tuyo">8000</div></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="duel-main">
+
+  <!-- Panel izq -->
+  <div class="panel-izq">
+    <div class="pila-sec">Rival</div>
+    <div class="pila-btn" onclick="abrirPila('cementerio','rival')">
+      <div class="pila-img">☠<div class="pila-cnt" id="cnt-cr">0</div></div>
+      <div class="pila-label">Cem.</div>
+    </div>
+    <div class="pila-btn" onclick="abrirPila('banished','rival')">
+      <div class="pila-img">✦<div class="pila-cnt" id="cnt-br">0</div></div>
+      <div class="pila-label">Dest.</div>
+    </div>
+    <div class="pila-btn">
+      <div class="pila-img" style="font-size:0.55rem;color:#334455">EX<div class="pila-cnt" id="cnt-er">0</div></div>
+      <div class="pila-label">Extra</div>
+    </div>
+    <hr class="pila-sep"/>
+    <div class="pila-sec">Tuyo</div>
+    <div class="pila-btn">
+      <div class="pila-img" style="font-size:0.55rem;color:#334455">EX<div class="pila-cnt" id="cnt-et">0</div></div>
+      <div class="pila-label">Extra</div>
+    </div>
+    <div class="pila-btn" onclick="abrirPila('banished','tuyo')">
+      <div class="pila-img">✦<div class="pila-cnt" id="cnt-bt">0</div></div>
+      <div class="pila-label">Dest.</div>
+    </div>
+    <div class="pila-btn" onclick="abrirPila('cementerio','tuyo')">
+      <div class="pila-img">☠<div class="pila-cnt" id="cnt-ct">0</div></div>
+      <div class="pila-label">Cem.</div>
+    </div>
+  </div>
+
+  <!-- Campo -->
+  <div class="campo-wrapper">
+    <div class="campo-container" id="campo-con">
+      <div class="campo-tablero" id="campo-tab">
+
+        <!-- RIVAL (rotado) -->
+        <div class="lado-rival">
+          <div class="campo-fila" id="fila-st-rival">
+            <div class="zona st" data-z="st-rival-0" data-lado="rival"><div class="zona-lbl">M/T</div><img src="" alt=""/></div>
+            <div class="zona st" data-z="st-rival-1" data-lado="rival"><div class="zona-lbl">M/T</div><img src="" alt=""/></div>
+            <div class="zona st" data-z="st-rival-2" data-lado="rival"><div class="zona-lbl">M/T</div><img src="" alt=""/></div>
+            <div class="zona st" data-z="st-rival-3" data-lado="rival"><div class="zona-lbl">M/T</div><img src="" alt=""/></div>
+            <div class="zona st" data-z="st-rival-4" data-lado="rival"><div class="zona-lbl">M/T</div><img src="" alt=""/></div>
+          </div>
+          <div class="campo-fila" id="fila-mon-rival">
+            <div class="zona" data-z="mon-rival-0" data-lado="rival"><div class="zona-lbl">MON</div><img src="" alt=""/><div class="zona-stats"></div></div>
+            <div class="zona" data-z="mon-rival-1" data-lado="rival"><div class="zona-lbl">MON</div><img src="" alt=""/><div class="zona-stats"></div></div>
+            <div class="zona" data-z="mon-rival-2" data-lado="rival"><div class="zona-lbl">MON</div><img src="" alt=""/><div class="zona-stats"></div></div>
+            <div class="zona" data-z="mon-rival-3" data-lado="rival"><div class="zona-lbl">MON</div><img src="" alt=""/><div class="zona-stats"></div></div>
+            <div class="zona" data-z="mon-rival-4" data-lado="rival"><div class="zona-lbl">MON</div><img src="" alt=""/><div class="zona-stats"></div></div>
+          </div>
+        </div>
+
+        <div class="campo-div"></div>
+        <div class="campo-centro">
+          <div class="zona field" data-z="field-rival" data-lado="rival"><div class="zona-lbl">Campo</div><img src="" alt=""/></div>
+          <div class="campo-centro-line"></div>
+          <div class="zona field" data-z="field-tuyo" data-lado="tuyo"><div class="zona-lbl">Campo</div><img src="" alt=""/></div>
+        </div>
+        <div class="campo-div"></div>
+
+        <!-- TUYO -->
+        <div class="campo-fila" id="fila-mon-tuyo">
+          <div class="zona" data-z="mon-tuyo-0" data-lado="tuyo"><div class="zona-lbl">MON</div><img src="" alt=""/><div class="zona-stats"></div></div>
+          <div class="zona" data-z="mon-tuyo-1" data-lado="tuyo"><div class="zona-lbl">MON</div><img src="" alt=""/><div class="zona-stats"></div></div>
+          <div class="zona" data-z="mon-tuyo-2" data-lado="tuyo"><div class="zona-lbl">MON</div><img src="" alt=""/><div class="zona-stats"></div></div>
+          <div class="zona" data-z="mon-tuyo-3" data-lado="tuyo"><div class="zona-lbl">MON</div><img src="" alt=""/><div class="zona-stats"></div></div>
+          <div class="zona" data-z="mon-tuyo-4" data-lado="tuyo"><div class="zona-lbl">MON</div><img src="" alt=""/><div class="zona-stats"></div></div>
+        </div>
+        <div class="campo-fila" id="fila-st-tuyo">
+          <div class="zona st" data-z="st-tuyo-0" data-lado="tuyo"><div class="zona-lbl">M/T</div><img src="" alt=""/></div>
+          <div class="zona st" data-z="st-tuyo-1" data-lado="tuyo"><div class="zona-lbl">M/T</div><img src="" alt=""/></div>
+          <div class="zona st" data-z="st-tuyo-2" data-lado="tuyo"><div class="zona-lbl">M/T</div><img src="" alt=""/></div>
+          <div class="zona st" data-z="st-tuyo-3" data-lado="tuyo"><div class="zona-lbl">M/T</div><img src="" alt=""/></div>
+          <div class="zona st" data-z="st-tuyo-4" data-lado="tuyo"><div class="zona-lbl">M/T</div><img src="" alt=""/></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Mano -->
+    <div class="mano-wrapper" id="mano-wrapper">
+      <div class="mano-lbl">Mano</div>
+      <div class="mano-empty" id="mano-empty">Sin cartas en mano</div>
+    </div>
+
+    <!-- Barra testeo -->
+    <div class="testeo-bar">
+      <span>Testeo</span>
+      <button class="tb-btn" onclick="robar(1)">Robar carta</button>
+      <button class="tb-btn" onclick="robar(5)">Robar 5</button>
+      <button class="tb-btn" onclick="barajarDeck()">Barajar</button>
+      <button class="tb-btn" onclick="cambiarControl()">Cambiar lado</button>
+      <button class="tb-btn danger" onclick="resetear()">Resetear</button>
+      <div class="ctrl-lbl">Controlando: <strong id="ctrl-lbl">Tu lado</strong></div>
+    </div>
+  </div>
+
+  <!-- Panel der -->
+  <div class="panel-der">
+    <div class="panel-tabs">
+      <button class="p-tab activo" onclick="setTab('info')">Info</button>
+      <button class="p-tab" onclick="setTab('chat')">Chat</button>
+      <button class="p-tab" onclick="setTab('log')">Log</button>
+    </div>
+    <div class="panel-body">
+      <div id="tab-info">
+        <div class="info-ph" id="info-ph">Pasa el cursor sobre una carta.</div>
+        <div id="info-box" style="display:none; padding:10px; display:none; flex-direction:column; gap:8px">
+          <img class="info-img" id="info-img" src="" alt=""/>
+          <div class="info-nombre" id="info-nom"></div>
+          <div class="info-tipo" id="info-tip"></div>
+          <div class="info-stats"><span class="atk" id="info-atk"></span><span class="def" id="info-def"></span></div>
+          <div class="info-efecto" id="info-efe"></div>
+        </div>
+      </div>
+      <div id="tab-chat">
+        <div class="chat-msgs" id="chat-msgs">
+          <div class="chat-msg"><span class="sistema">— Sala de testeo iniciada —</span></div>
+        </div>
+        <div class="chat-in">
+          <input type="text" id="chat-in" placeholder="Mensaje..." onkeydown="if(event.key==='Enter')enviarChat()"/>
+          <button onclick="enviarChat()">→</button>
+        </div>
+      </div>
+      <div id="tab-log">
+        <div class="log-list" id="log-list">
+          <div class="log-item sistema">Sala de testeo iniciada.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Menú contextual -->
+<div class="ctx-menu" id="ctx-menu">
+  <button class="ctx-btn green" id="ctx-invocar" onclick="accion('invocar')">⬆ Invocar / Colocar</button>
+  <button class="ctx-btn" id="ctx-bocaabajo" onclick="accion('bocaabajo')">🔽 Boca abajo</button>
+  <button class="ctx-btn" id="ctx-bocaarriba" onclick="accion('bocaarriba')">🔼 Boca arriba</button>
+  <button class="ctx-btn" id="ctx-defensa" onclick="accion('defensa')">↔ Posición defensa</button>
+  <button class="ctx-btn" id="ctx-ataque" onclick="accion('ataque')">↕ Posición ataque</button>
+  <hr class="ctx-sep"/>
+  <button class="ctx-btn" onclick="accion('amano')">✋ A la mano</button>
+  <button class="ctx-btn" onclick="accion('aldeck')">🗃 Al deck (abajo)</button>
+  <button class="ctx-btn" onclick="accion('aldeck-top')">🗃 Al deck (arriba)</button>
+  <hr class="ctx-sep"/>
+  <button class="ctx-btn red" onclick="accion('cementerio')">☠ Al cementerio</button>
+  <button class="ctx-btn red" onclick="accion('banished')">✦ Desterrar</button>
+</div>
+
+<!-- Modal pila -->
+<div class="pila-overlay" id="pila-overlay" onclick="if(event.target===this)cerrarPila()">
+  <div class="pila-box">
+    <div class="pila-header">
+      <div class="pila-titulo" id="pila-titulo">Cementerio</div>
+      <button class="pila-close" onclick="cerrarPila()">✕</button>
+    </div>
+    <div class="pila-grid" id="pila-grid"></div>
+  </div>
+</div>
+
+<!-- Scripts cartas -->
+<script src="js/cartas/monstereffectDetailed.js"></script>
+<script src="js/cartas/monsterfusionDetailed.js"></script>
+<script src="js/cartas/monsternormalDetailed.js"></script>
+<script src="js/cartas/monsterritualDetailed.js"></script>
+<script src="js/cartas/spellcontinuousDetailed.js"></script>
+<script src="js/cartas/spellequipDetailed.js"></script>
+<script src="js/cartas/spellfieldDetailed.js"></script>
+<script src="js/cartas/spellnormalDetailed.js"></script>
+<script src="js/cartas/spellquickDetailed.js"></script>
+<script src="js/cartas/spellritualDetailed.js"></script>
+<script src="js/cartas/trapcontinuousDetailed.js"></script>
+<script src="js/cartas/trapcounterDetailed.js"></script>
+<script src="js/cartas/trapnormalDetailed.js"></script>
+<script src="js/cartas/unificador.js"></script>
+<script src="js/banlists/banlists.js"></script>
+
+<script type="module">
+import { auth, db } from "./js/firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ═══ ESTADO ═══
+const G = {
+  lp: { tuyo:8000, rival:8000 },
+  fase: 'DP',
+  control: 'tuyo',
+  deck:       { tuyo:[], rival:[] },
+  mano:       { tuyo:[], rival:[] },
+  cementerio: { tuyo:[], rival:[] },
+  banished:   { tuyo:[], rival:[] },
+  extra:      { tuyo:[], rival:[] },
+};
+
+let deckData = null;
+let zonaCtx = null;  // zona con menú abierto
+
+// ═══ INIT ═══
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = "sesion.html"; return; }
+  initCardPool();
+
+  const cfg = JSON.parse(sessionStorage.getItem("duelo-config") || "{}");
+  if (cfg.deckId) {
+    const snap = await getDoc(doc(db, "usuarios", user.uid, "decksGuardados", cfg.deckId));
+    if (snap.exists()) {
+      deckData = snap.data();
+      cargarDeck(deckData);
+      log("Deck cargado: " + (deckData.nombre || "Sin nombre"), "sistema");
+    }
+  } else {
+    log("Sin deck seleccionado. Ve al lobby y elige un deck.", "sistema");
+  }
+});
+
+function cargarDeck(data) {
+  G.deck.tuyo   = expandirDeck(data.main  || []);
+  G.deck.rival  = expandirDeck(data.main  || []);
+  G.extra.tuyo  = expandirDeck(data.extra || []);
+  G.extra.rival = expandirDeck(data.extra || []);
+  barajarDeck();
+  actualizarCnt();
+}
+
+function expandirDeck(arr) {
+  const out = [];
+  for (const c of arr) {
+    const key = c.key || c.name || c;
+    const cant = c.cantidad || 1;
+    for (let i = 0; i < cant; i++) out.push(key);
+  }
+  return out;
+}
+
+// ═══ LP ═══
+window.ajLP = function(l, n) {
+  G.lp[l] = Math.max(0, G.lp[l] + n);
+  renderLP();
+  log(`LP ${l==='tuyo'?'Tuyo':'Rival'}: ${G.lp[l]}`, l);
+};
+
+window.ajLPx = function(l) {
+  const v = prompt(`Nuevo LP (${l==='tuyo'?'Tuyo':'Rival'}):`, G.lp[l]);
+  if (v === null) return;
+  const n = parseInt(v);
+  if (!isNaN(n)) { G.lp[l] = Math.max(0, n); renderLP(); log(`LP ajustado: ${G.lp[l]}`, "sistema"); }
+};
+
+function renderLP() {
+  ['tuyo','rival'].forEach(l => {
+    const el = document.getElementById('lp-'+l);
+    el.textContent = G.lp[l].toLocaleString();
+    el.className = 'lp-valor' + (G.lp[l]<=0?' danger':G.lp[l]<=2000?' warning':'');
+  });
+}
+
+// ═══ FASES ═══
+window.setFase = function(f) {
+  G.fase = f;
+  document.querySelectorAll('.fase-btn').forEach(b => b.classList.remove('activa'));
+  document.getElementById('f-'+f).classList.add('activa');
+  log(`Fase: ${f}`, "sistema");
+};
+
+// ═══ VISTA ═══
+window.setVista = function(v) {
+  const con = document.getElementById('campo-con');
+  con.className = v==='3d' ? 'campo-container' : 'campo-container flat';
+  document.getElementById('btn3d').classList.toggle('activo', v==='3d');
+  document.getElementById('btn2d').classList.toggle('activo', v==='2d');
+};
+
+// ═══ TABS ═══
+window.setTab = function(tab) {
+  ['info','chat','log'].forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (!el) return;
+    el.style.display = t===tab ? (t==='info'?'block':'flex') : 'none';
+  });
+  document.querySelectorAll('.p-tab').forEach((b,i) =>
+    b.classList.toggle('activo', ['info','chat','log'][i]===tab)
+  );
+};
+
+// Init tabs
+document.getElementById('tab-chat').style.display = 'none';
+document.getElementById('tab-log').style.display = 'none';
+
+// ═══ INFO CARTA ═══
+function mostrarInfo(key) {
+  if (!key || !window.CARD_POOL) return;
+  const c = window.CARD_POOL[key];
+  if (!c) return;
+  document.getElementById('info-ph').style.display = 'none';
+  const box = document.getElementById('info-box');
+  box.style.display = 'flex';
+  document.getElementById('info-img').src = `recursos/cards/${key}.webp`;
+  document.getElementById('info-nom').textContent = c.name;
+  document.getElementById('info-tip').textContent = [c['card-type'], c.attribute, c.type].filter(Boolean).join(' · ');
+  document.getElementById('info-atk').textContent = c.atk!==null ? `ATK ${c.atk}` : '';
+  document.getElementById('info-def').textContent = c.def!==null ? `DEF ${c.def}` : '';
+  document.getElementById('info-efe').textContent = c.effect || '';
+}
+
+// ═══ ZONAS ═══
+function colocarEnZona(el, key) {
+  if (!key) return;
+  const c = window.CARD_POOL && window.CARD_POOL[key];
+  el.classList.add('ocupada');
+  el.dataset.key = key;
+  const img = el.querySelector('img');
+  if (img) { img.src = `recursos/cards/${key}.webp`; img.style.display = 'block'; }
+  const lbl = el.querySelector('.zona-lbl');
+  if (lbl) lbl.style.display = 'none';
+  const stats = el.querySelector('.zona-stats');
+  if (stats && c) stats.textContent = c.atk!==null ? `${c.atk}/${c.def}` : '';
+}
+
+function limpiarZona(el) {
+  el.classList.remove('ocupada','boca-abajo','defensa');
+  el.dataset.key = '';
+  const img = el.querySelector('img');
+  if (img) { img.src=''; img.style.display='none'; }
+  const lbl = el.querySelector('.zona-lbl');
+  if (lbl) lbl.style.display='';
+  const stats = el.querySelector('.zona-stats');
+  if (stats) stats.textContent='';
+}
+
+// Eventos en zonas
+document.querySelectorAll('.zona').forEach(z => {
+  z.addEventListener('mouseenter', () => { if (z.dataset.key) mostrarInfo(z.dataset.key); });
+
+  z.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    zonaCtx = z;
+    const ocupada = z.classList.contains('ocupada');
+    document.getElementById('ctx-invocar').style.display   = ocupada ? 'none' : 'block';
+    document.getElementById('ctx-bocaabajo').style.display = ocupada ? 'block' : 'none';
+    document.getElementById('ctx-bocaarriba').style.display= ocupada ? 'block' : 'none';
+    document.getElementById('ctx-defensa').style.display   = ocupada ? 'block' : 'none';
+    document.getElementById('ctx-ataque').style.display    = ocupada ? 'block' : 'none';
+    const menu = document.getElementById('ctx-menu');
+    menu.style.left = Math.min(e.clientX, window.innerWidth-170)+'px';
+    menu.style.top  = Math.min(e.clientY, window.innerHeight-290)+'px';
+    menu.classList.add('show');
+  });
+
+  // Drop desde mano
+  z.addEventListener('dragover', e => {
+    if (!z.classList.contains('ocupada') && e.dataTransfer.types.includes('mano-key')) {
+      e.preventDefault();
+      z.style.outline = '2px dashed #00c3ff';
+    }
+  });
+  z.addEventListener('dragleave', () => { z.style.outline=''; });
+  z.addEventListener('drop', e => {
+    z.style.outline='';
+    const key = e.dataTransfer.getData('mano-key');
+    const idx = parseInt(e.dataTransfer.getData('mano-idx'));
+    const lado = e.dataTransfer.getData('mano-lado');
+    if (!key || z.classList.contains('ocupada')) return;
+    G.mano[lado].splice(idx,1);
+    colocarEnZona(z, key);
+    renderMano();
+    log('Carta colocada en el campo.', lado);
+  });
+});
+
+document.addEventListener('click', () => document.getElementById('ctx-menu').classList.remove('show'));
+
+// ═══ ACCIONES MENÚ ═══
+window.accion = function(tipo) {
+  if (!zonaCtx) return;
+  const key  = zonaCtx.dataset.key;
+  const lado = zonaCtx.dataset.lado || G.control;
+
+  switch(tipo) {
+    case 'bocaabajo':  zonaCtx.classList.add('boca-abajo'); log('Carta boca abajo.',lado); break;
+    case 'bocaarriba': zonaCtx.classList.remove('boca-abajo'); log('Carta revelada.',lado); break;
+    case 'defensa':    zonaCtx.classList.add('defensa'); log('Posición defensa.',lado); break;
+    case 'ataque':     zonaCtx.classList.remove('defensa'); log('Posición ataque.',lado); break;
+    case 'cementerio':
+      if (key) { G.cementerio[lado].push(key); limpiarZona(zonaCtx); actualizarCnt(); log('Al cementerio.',lado); } break;
+    case 'banished':
+      if (key) { G.banished[lado].push(key); limpiarZona(zonaCtx); actualizarCnt(); log('Desterrada.',lado); } break;
+    case 'amano':
+      if (key) { G.mano[lado].push(key); limpiarZona(zonaCtx); renderMano(); log('A la mano.',lado); } break;
+    case 'aldeck':
+      if (key) { G.deck[lado].push(key); limpiarZona(zonaCtx); actualizarCnt(); log('Al deck (abajo).',lado); } break;
+    case 'aldeck-top':
+      if (key) { G.deck[lado].unshift(key); limpiarZona(zonaCtx); actualizarCnt(); log('Al deck (arriba).',lado); } break;
+  }
+  document.getElementById('ctx-menu').classList.remove('show');
+};
+
+// ═══ MANO ═══
+function renderMano() {
+  const wrap = document.getElementById('mano-wrapper');
+  const empty = document.getElementById('mano-empty');
+  const lado = G.control;
+  wrap.querySelectorAll('.carta-mano').forEach(c => c.remove());
+
+  if (G.mano[lado].length === 0) { empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  G.mano[lado].forEach((key, idx) => {
+    const div = document.createElement('div');
+    div.className = 'carta-mano';
+    div.draggable = true;
+    const img = document.createElement('img');
+    img.src = `recursos/cards/${key}.webp`;
+    img.alt = key;
+    div.appendChild(img);
+
+    div.addEventListener('mouseenter', () => mostrarInfo(key));
+
+    div.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      G.mano[lado].splice(idx,1);
+      G.cementerio[lado].push(key);
+      actualizarCnt(); renderMano();
+      log('Carta descartada al cementerio.', lado);
+    });
+
+    div.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('mano-key', key);
+      e.dataTransfer.setData('mano-idx', idx);
+      e.dataTransfer.setData('mano-lado', lado);
+    });
+
+    wrap.appendChild(div);
+  });
+}
+
+// ═══ PILA MODAL ═══
+window.abrirPila = function(tipo, lado) {
+  const lista = G[tipo][lado];
+  const titulo = (tipo==='cementerio'?'Cementerio':'Desterradas') + ` (${lado==='tuyo'?'Tuyo':'Rival'})`;
+  document.getElementById('pila-titulo').textContent = titulo;
+  const grid = document.getElementById('pila-grid');
+  grid.innerHTML = '';
+  if (lista.length === 0) {
+    grid.innerHTML = '<div class="pila-empty">Vacío</div>'; 
+  } else {
+    lista.forEach((key, idx) => {
+      const div = document.createElement('div');
+      div.className = 'pila-carta';
+      const img = document.createElement('img');
+      img.src = `recursos/cards/${key}.webp`;
+      img.alt = key;
+      div.appendChild(img);
+      div.addEventListener('mouseenter', () => mostrarInfo(key));
+      div.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        lista.splice(idx,1);
+        G.mano[lado].push(key);
+        actualizarCnt(); renderMano(); cerrarPila();
+        log('Carta devuelta a la mano.', lado);
+      });
+      grid.appendChild(div);
+    });
+  }
+  document.getElementById('pila-overlay').classList.add('show');
+};
+
+window.cerrarPila = function() { document.getElementById('pila-overlay').classList.remove('show'); };
+
+// ═══ CONTADORES ═══
+function actualizarCnt() {
+  document.getElementById('cnt-ct').textContent = G.cementerio.tuyo.length;
+  document.getElementById('cnt-cr').textContent = G.cementerio.rival.length;
+  document.getElementById('cnt-bt').textContent = G.banished.tuyo.length;
+  document.getElementById('cnt-br').textContent = G.banished.rival.length;
+  document.getElementById('cnt-et').textContent = G.extra.tuyo.length;
+  document.getElementById('cnt-er').textContent = G.extra.rival.length;
+}
+
+// ═══ CONTROLES TESTEO ═══
+window.robar = function(n) {
+  const l = G.control;
+  const cant = Math.min(n, G.deck[l].length);
+  if (cant === 0) { log('Deck vacío.', 'sistema'); return; }
+  for (let i=0;i<cant;i++) G.mano[l].push(G.deck[l].shift());
+  renderMano(); actualizarCnt();
+  log(`${cant} carta(s) robada(s).`, l);
+};
+
+window.barajarDeck = function() {
+  const l = G.control;
+  for (let i=G.deck[l].length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [G.deck[l][i],G.deck[l][j]]=[G.deck[l][j],G.deck[l][i]];
+  }
+  actualizarCnt();
+  log('Deck barajado.', l);
+};
+
+window.cambiarControl = function() {
+  G.control = G.control==='tuyo'?'rival':'tuyo';
+  document.getElementById('ctrl-lbl').textContent = G.control==='tuyo'?'Tu lado':'Lado rival';
+  renderMano();
+  log(`Controlando: ${G.control==='tuyo'?'Tu lado':'Lado rival'}`, 'sistema');
+};
+
+window.resetear = function() {
+  if (!confirm('¿Resetear el campo completo?')) return;
+  document.querySelectorAll('.zona').forEach(z => limpiarZona(z));
+  ['tuyo','rival'].forEach(l => {
+    G.mano[l]=[]; G.cementerio[l]=[]; G.banished[l]=[]; G.lp[l]=8000;
+  });
+  if (deckData) cargarDeck(deckData);
+  renderMano(); renderLP(); actualizarCnt();
+  log('Campo reseteado.', 'sistema');
+};
+
+// ═══ CHAT ═══
+window.enviarChat = function() {
+  const inp = document.getElementById('chat-in');
+  const txt = inp.value.trim();
+  if (!txt) return;
+  inp.value='';
+  const cont = document.getElementById('chat-msgs');
+  const div = document.createElement('div');
+  div.className='chat-msg';
+  div.innerHTML=`<span class="autor">Tú:</span> ${txt}`;
+  cont.appendChild(div);
+  cont.scrollTop=cont.scrollHeight;
+};
+
+// ═══ LOG ═══
+function log(txt, tipo='sistema') {
+  const lista = document.getElementById('log-list');
+  const div = document.createElement('div');
+  div.className = `log-item ${tipo}`;
+  const h = new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  div.textContent = `[${h}] ${txt}`;
+  lista.appendChild(div);
+  lista.scrollTop=lista.scrollHeight;
+}
+
+window.log = log;
+</script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuelingX</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--color-border);
+      background: var(--color-surface);
+    }
+
+    .nav-logo { font-size: 1.4rem; font-weight: 700; color: var(--color-primary); }
+    .nav-usuario { display: flex; align-items: center; gap: 16px; font-size: 0.9rem; }
+    .nav-usuario span { color: var(--color-text-muted); }
+    .nav-usuario strong { color: var(--color-primary); }
+
+    .contenido { padding: 40px 32px; max-width: 1100px; margin: 0 auto; }
+
+    .bienvenida { margin-bottom: 32px; }
+    .bienvenida h2 { font-size: 1.4rem; margin-bottom: 6px; }
+    .bienvenida p { color: var(--color-text-muted); }
+
+    .seccion-titulo {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-muted);
+      margin: 32px 0 12px;
+    }
+
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .menu-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      text-decoration: none;
+      color: var(--color-text);
+      transition: border-color 0.2s, transform 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .menu-card:hover {
+      border-color: var(--color-primary);
+      transform: translateY(-2px);
+      text-decoration: none;
+    }
+
+    .menu-card .icono { font-size: 1.8rem; }
+    .menu-card .titulo { font-size: 1rem; font-weight: 700; color: var(--color-primary); }
+    .menu-card .desc { font-size: 0.82rem; color: var(--color-text-muted); }
+
+    .menu-card.proximamente { opacity: 0.38; pointer-events: none; }
+
+    .tag-pronto {
+      font-size: 0.7rem;
+      background: var(--color-border);
+      color: var(--color-text-muted);
+      padding: 2px 7px;
+      border-radius: 20px;
+      width: fit-content;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-logo">DuelingX</div>
+    <div class="nav-usuario">
+      <span>Bienvenido, <strong id="nav-username">...</strong></span>
+      <button class="btn-secondary" onclick="cerrarSesion()" style="padding:6px 14px; font-size:0.85rem;">Cerrar sesión</button>
+    </div>
+  </nav>
+
+  <div class="contenido">
+
+    <div class="bienvenida">
+      <h2 id="saludo">Cargando...</h2>
+      <p>¿Qué quieres hacer hoy?</p>
+    </div>
+
+    <div class="seccion-titulo">Juego</div>
+    <div class="menu-grid">
+      <a href="deckbuilder.html" class="menu-card">
+        <div class="icono">🃏</div>
+        <div class="titulo">Deckbuilder</div>
+        <div class="desc">Arma y guarda tus decks por formato.</div>
+      </a>
+      <a href="duelo-lobby.html" class="menu-card">
+        <div class="icono">⚔️</div>
+        <div class="titulo">Duelos</div>
+        <div class="desc">Busca rival, crea sala o prueba tu deck.</div>
+      </a>
+      <a href="#" class="menu-card proximamente">
+        <div class="icono">🏆</div>
+        <div class="titulo">Ranked</div>
+        <div class="desc">Compite y sube tu ELO por formato.</div>
+        <div class="tag-pronto">Próximamente</div>
+      </a>
+      <a href="#" class="menu-card proximamente">
+        <div class="icono">💀</div>
+        <div class="titulo">Hardcore Ranked</div>
+        <div class="desc">Abre sobres y construye tu colección.</div>
+        <div class="tag-pronto">Próximamente</div>
+      </a>
+    </div>
+
+    <div class="seccion-titulo">Tu cuenta</div>
+    <div class="menu-grid">
+      <a href="#" class="menu-card proximamente">
+        <div class="icono">👤</div>
+        <div class="titulo">Perfil</div>
+        <div class="desc">Tus stats, historial y cosméticos.</div>
+        <div class="tag-pronto">Próximamente</div>
+      </a>
+      <a href="#" class="menu-card proximamente">
+        <div class="icono">🎁</div>
+        <div class="titulo">Battle Pass</div>
+        <div class="desc">Recompensas de temporada.</div>
+        <div class="tag-pronto">Próximamente</div>
+      </a>
+      <a href="#" class="menu-card proximamente">
+        <div class="icono">📦</div>
+        <div class="titulo">Tienda / Sobres</div>
+        <div class="desc">Gasta tus Puntos de Duelo.</div>
+        <div class="tag-pronto">Próximamente</div>
+      </a>
+      <a href="#" class="menu-card proximamente">
+        <div class="icono">👥</div>
+        <div class="titulo">Amigos</div>
+        <div class="desc">Gestiona tu lista de amigos.</div>
+        <div class="tag-pronto">Próximamente</div>
+      </a>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { auth, db } from "./js/firebase.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { window.location.href = "sesion.html"; return; }
+
+      await updateDoc(doc(db, "usuarios", user.uid), {
+        ultimoAcceso: serverTimestamp(),
+        estadoSocial: "en_linea"
+      });
+
+      const snap = await getDoc(doc(db, "usuarios", user.uid));
+      if (snap.exists()) {
+        const data = snap.data();
+        document.getElementById("nav-username").textContent = data.username;
+        document.getElementById("saludo").textContent = `Hola, ${data.username}`;
+      }
+    });
+
+    window.cerrarSesion = async function() {
+      await signOut(auth);
+      window.location.href = "sesion.html";
+    };
+  </script>
+
+</body>
+</html>

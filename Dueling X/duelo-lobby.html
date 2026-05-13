@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Duelos - DuelingX</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    body { min-height: 100vh; display: flex; flex-direction: column; }
+
+    .nav {
+      display: flex; align-items: center; gap: 16px;
+      padding: 10px 24px;
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .nav-logo { font-size: 1.2rem; font-weight: 700; color: var(--color-primary); margin-right: auto; }
+    .nav button { padding: 6px 14px; font-size: 0.85rem; margin-top: 0; }
+
+    .contenido {
+      flex: 1; padding: 40px 32px; max-width: 900px;
+      margin: 0 auto; width: 100%;
+    }
+
+    .titulo-seccion {
+      font-size: 1.4rem; font-weight: 700; margin-bottom: 6px;
+    }
+    .subtitulo {
+      color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: 32px;
+    }
+
+    /* Selector de deck y formato */
+    .config-duelo {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 32px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      align-items: end;
+    }
+
+    .config-duelo label {
+      display: block; font-size: 0.8rem;
+      color: var(--color-text-muted);
+      margin-bottom: 6px; text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .config-duelo select { width: 100%; }
+
+    .config-status {
+      grid-column: 1 / -1;
+      font-size: 0.82rem;
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      background: rgba(0,195,255,0.07);
+      border: 1px solid rgba(0,195,255,0.2);
+      color: var(--color-primary);
+      display: none;
+    }
+
+    .config-status.visible { display: block; }
+    .config-status.error { background: rgba(255,68,68,0.07); border-color: rgba(255,68,68,0.2); color: var(--color-danger); }
+
+    /* Modos de duelo */
+    .modos-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .modo-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 28px 20px;
+      display: flex; flex-direction: column;
+      gap: 10px; cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s;
+      position: relative; overflow: hidden;
+    }
+
+    .modo-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--accent);
+    }
+
+    .modo-card:hover:not(.disabled) {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .modo-card.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .modo-card .icono { font-size: 2rem; }
+    .modo-card .nombre { font-size: 1.05rem; font-weight: 700; }
+    .modo-card .desc { font-size: 0.82rem; color: var(--color-text-muted); line-height: 1.5; }
+
+    .modo-card .tag {
+      font-size: 0.7rem; font-weight: 700;
+      padding: 3px 8px; border-radius: 20px;
+      width: fit-content;
+      background: rgba(255,255,255,0.06);
+      color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
+    }
+
+    .modo-card .tag.pronto {
+      background: rgba(255,170,0,0.1);
+      border-color: rgba(255,170,0,0.3);
+      color: var(--color-warning);
+    }
+
+    /* Colores por modo */
+    .modo-matchmaking { --accent: #00c3ff; }
+    .modo-sala        { --accent: #00cc88; }
+    .modo-testeo      { --accent: #aa88ff; }
+
+    .modo-card .nombre { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <span class="nav-logo">DuelingX</span>
+    <span style="color:var(--color-text-muted); font-size:0.9rem">Bienvenido, <strong id="nav-username" style="color:var(--color-primary)">...</strong></span>
+    <a href="index.html"><button class="btn-secondary">← Inicio</button></a>
+  </nav>
+
+  <div class="contenido">
+    <div class="titulo-seccion">Duelos</div>
+    <div class="subtitulo">Elige tu deck y formato antes de entrar.</div>
+
+    <!-- Configuración previa -->
+    <div class="config-duelo">
+      <div>
+        <label>Formato</label>
+        <select id="cfg-formato" onchange="onCambiarConfig()">
+          <option value="goat">Goat</option>
+          <option value="edison">Edison</option>
+          <option value="critter">Critter</option>
+        </select>
+      </div>
+      <div>
+        <label>Tu Deck</label>
+        <select id="cfg-deck" onchange="onCambiarConfig()">
+          <option value="">Cargando decks...</option>
+        </select>
+      </div>
+      <div>
+        <label>Modalidad</label>
+        <select id="cfg-modalidad" onchange="onCambiarConfig()">
+          <option value="casual">Casual</option>
+          <option value="ranked">Ranked</option>
+          <option value="hardcore">Hardcore Ranked</option>
+        </select>
+      </div>
+      <div class="config-status" id="cfg-status"></div>
+    </div>
+
+    <!-- Modos -->
+    <div class="modos-grid">
+
+      <!-- Buscar Duelo -->
+      <div class="modo-card modo-matchmaking disabled" id="card-matchmaking" onclick="irA('duelo-matchmaking.html')">
+        <div class="icono">⚔️</div>
+        <div class="nombre">Buscar Duelo</div>
+        <div class="desc">Entra a la cola y el sistema te empareja automáticamente con un rival de nivel similar.</div>
+        <div class="tag pronto">Próximamente</div>
+      </div>
+
+      <!-- Crear Sala -->
+      <div class="modo-card modo-sala disabled" id="card-sala" onclick="irA('duelo-sala.html')">
+        <div class="icono">🏠</div>
+        <div class="nombre">Crear Sala</div>
+        <div class="desc">Crea una sala pública o privada y invita a un amigo con el código.</div>
+        <div class="tag pronto">Próximamente</div>
+      </div>
+
+      <!-- Testeo -->
+      <div class="modo-card modo-testeo" id="card-testeo" onclick="irA('duelo-testeo.html')">
+        <div class="icono">🧪</div>
+        <div class="nombre">Sala de Testeo</div>
+        <div class="desc">Juega solo contra ti mismo para probar combos y estrategias. No cuenta para stats.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "./js/firebase.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { collection, getDocs, query, orderBy, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    let usuario = null;
+    let decksDisponibles = [];
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { window.location.href = "sesion.html"; return; }
+      usuario = user;
+
+      const snap = await getDoc(doc(db, "usuarios", user.uid));
+      if (snap.exists()) {
+        document.getElementById("nav-username").textContent = snap.data().username;
+      }
+
+      await cargarDecks();
+    });
+
+    async function cargarDecks() {
+      const select = document.getElementById("cfg-deck");
+      const formato = document.getElementById("cfg-formato").value;
+
+      try {
+        const q = query(
+          collection(db, "usuarios", usuario.uid, "decksGuardados"),
+          orderBy("creadoEn", "desc")
+        );
+        const snap = await getDocs(q);
+        decksDisponibles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Filtrar por formato seleccionado
+        const filtrados = decksDisponibles.filter(d => d.formato === formato);
+
+        select.innerHTML = filtrados.length
+          ? filtrados.map(d => `<option value="${d.id}">${d.nombre || d.id}</option>`).join("")
+          : `<option value="">Sin decks para este formato</option>`;
+
+      } catch(e) {
+        select.innerHTML = `<option value="">Error al cargar decks</option>`;
+      }
+
+      onCambiarConfig();
+    }
+
+    window.onCambiarConfig = function() {
+      const formato  = document.getElementById("cfg-formato").value;
+      const deckId   = document.getElementById("cfg-deck").value;
+      const modalidad = document.getElementById("cfg-modalidad").value;
+      const status   = document.getElementById("cfg-status");
+
+      // Recargar decks si cambió el formato
+      const filtrados = decksDisponibles.filter(d => d.formato === formato);
+      const select = document.getElementById("cfg-deck");
+      if (filtrados.length) {
+        // Solo actualizar si cambió el formato
+        const opciones = filtrados.map(d => `<option value="${d.id}">${d.nombre || d.id}</option>`).join("");
+        if (select.innerHTML !== opciones) select.innerHTML = opciones;
+      } else {
+        select.innerHTML = `<option value="">Sin decks para ${formato}</option>`;
+      }
+
+      const deckSeleccionado = document.getElementById("cfg-deck").value;
+
+      if (!deckSeleccionado) {
+        status.textContent = `No tienes decks de formato ${formato}. Ve al deckbuilder a crear uno.`;
+        status.className = "config-status visible error";
+        deshabilitarModos();
+        return;
+      }
+
+      // Guardar config en sessionStorage para usarla en la sala
+      sessionStorage.setItem("duelo-config", JSON.stringify({ formato, deckId: deckSeleccionado, modalidad }));
+
+      status.textContent = `Listo: deck seleccionado en formato ${formato} — ${modalidad}`;
+      status.className = "config-status visible";
+      // De momento los modos siguen deshabilitados (próximamente)
+      deshabilitarModos();
+    };
+
+    function deshabilitarModos() {
+      ["card-matchmaking", "card-sala"].forEach(id => {
+        document.getElementById(id).classList.add("disabled");
+      });
+      // Testeo siempre habilitado si hay deck
+      const deckOk = !!document.getElementById("cfg-deck").value;
+      const testeo = document.getElementById("card-testeo");
+      if (deckOk) testeo.classList.remove("disabled");
+      else testeo.classList.add("disabled");
+    }
+
+    window.irA = function(url) {
+      const config = sessionStorage.getItem("duelo-config");
+      if (!config) return;
+      window.location.href = url;
+    };
+
+    // Recargar decks al cambiar formato
+    document.getElementById("cfg-formato").addEventListener("change", cargarDecks);
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sesión - DuelingX</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .sesion-box {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .sesion-box h1 {
+      font-size: 1.6rem;
+      margin-bottom: 6px;
+      color: var(--color-primary);
+    }
+
+    .sesion-box p {
+      color: var(--color-text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 24px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px;
+      background: transparent;
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+    }
+
+    .tab.activo {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      background: rgba(0, 195, 255, 0.08);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+      margin-bottom: 6px;
+    }
+
+    .form-acciones {
+      margin-top: 24px;
+    }
+
+    .form-acciones button {
+      width: 100%;
+    }
+
+    #mensaje-sesion {
+      margin-top: 14px;
+      font-size: 0.88rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sesion-box">
+    <h1>DuelingX</h1>
+    <p>Plataforma de duelos retro</p>
+
+    <div class="tabs">
+      <button class="tab activo" id="tab-login" onclick="mostrarTab('login')">Iniciar sesión</button>
+      <button class="tab" id="tab-registro" onclick="mostrarTab('registro')">Registrarse</button>
+    </div>
+
+    <!-- FORMULARIO LOGIN -->
+    <div id="form-login">
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="login-email" placeholder="tu@correo.com" />
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••" />
+      </div>
+      <div class="form-acciones">
+        <button class="btn-primary" onclick="iniciarSesion()">Entrar</button>
+      </div>
+    </div>
+
+    <!-- FORMULARIO REGISTRO -->
+    <div id="form-registro" class="oculto">
+      <div class="form-group">
+        <label>Username (público)</label>
+        <input type="text" id="registro-username" placeholder="Tu nombre en el juego" />
+      </div>
+      <div class="form-group">
+        <label>Nombre real (privado)</label>
+        <input type="text" id="registro-nombre" placeholder="Tu nombre completo" />
+      </div>
+      <div class="form-group">
+        <label>País</label>
+        <select id="registro-pais">
+          <option value="">Selecciona tu país</option>
+          <option value="MX">México</option>
+          <option value="AR">Argentina</option>
+          <option value="CO">Colombia</option>
+          <option value="ES">España</option>
+          <option value="US">Estados Unidos</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="registro-email" placeholder="tu@correo.com" />
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="registro-password" placeholder="Mínimo 6 caracteres" />
+      </div>
+      <div class="form-acciones">
+        <button class="btn-primary" onclick="registrarse()">Crear cuenta</button>
+      </div>
+    </div>
+
+    <div id="mensaje-sesion"></div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "./js/firebase.js";
+    import {
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import {
+      doc, setDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // Bandera para evitar redirección durante el registro
+    let registrando = false;
+
+    // Si ya está logueado, redirige
+    onAuthStateChanged(auth, (user) => {
+      if (user && !registrando) window.location.href = "index.html";
+    });
+
+    function mostrarMensaje(texto, tipo) {
+      const el = document.getElementById("mensaje-sesion");
+      el.textContent = texto;
+      el.className = tipo === "error" ? "mensaje-error" : "mensaje-exito";
+    }
+
+    // Cambiar entre tabs
+    window.mostrarTab = function(tab) {
+      document.getElementById("form-login").classList.toggle("oculto", tab !== "login");
+      document.getElementById("form-registro").classList.toggle("oculto", tab !== "registro");
+      document.getElementById("tab-login").classList.toggle("activo", tab === "login");
+      document.getElementById("tab-registro").classList.toggle("activo", tab === "registro");
+      document.getElementById("mensaje-sesion").textContent = "";
+    };
+
+    // Iniciar sesión
+    window.iniciarSesion = async function() {
+      const email = document.getElementById("login-email").value.trim();
+      const password = document.getElementById("login-password").value;
+
+      if (!email || !password) {
+        mostrarMensaje("Completa todos los campos.", "error");
+        return;
+      }
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = "index.html";
+      } catch (err) {
+        mostrarMensaje("Correo o contraseña incorrectos.", "error");
+      }
+    };
+
+    // Registrarse
+    window.registrarse = async function() {
+      const username = document.getElementById("registro-username").value.trim();
+      const nombre = document.getElementById("registro-nombre").value.trim();
+      const pais = document.getElementById("registro-pais").value;
+      const email = document.getElementById("registro-email").value.trim();
+      const password = document.getElementById("registro-password").value;
+
+      if (!username || !nombre || !pais || !email || !password) {
+        mostrarMensaje("Completa todos los campos.", "error");
+        return;
+      }
+
+      if (password.length < 6) {
+        mostrarMensaje("La contraseña debe tener al menos 6 caracteres.", "error");
+        return;
+      }
+
+      try {
+        registrando = true;
+        const credencial = await createUserWithEmailAndPassword(auth, email, password);
+        const uid = credencial.user.uid;
+
+        // Crear documento del usuario en Firestore
+        await setDoc(doc(db, "usuarios", uid), {
+          uid,
+          username,
+          nombre,
+          pais,
+          email,
+          rol: "usuario",
+          estado: "activa",
+          estadoSocial: "en_linea",
+          nombrePublico: false,
+          fechaRegistro: serverTimestamp(),
+          ultimoAcceso: serverTimestamp(),
+
+          // Economía
+          puntosDuelo: 0,
+          xpDuelo: 0,
+
+          // Slots de deck
+          slotsBase: 5,
+          slotsDesbloqueados: 0,
+
+          // Battle Pass
+          battlePass: {
+            activo: false,
+            temporadaActual: null,
+            nivel: 0,
+            xp: 0
+          },
+
+          // Almacén (vacío al inicio)
+          almacen: {
+            equipado: {
+              fotoPerfil: "default",
+              fotoPortada: "default",
+              marco: "default",
+              fondoMesa: "default",
+              sleeve: "default"
+            },
+            coleccion: []
+          },
+
+          // Social
+          amigos: [],
+          solicitudesEnviadas: [],
+          solicitudesRecibidas: []
+        });
+
+        mostrarMensaje("¡Cuenta creada! Redirigiendo...", "exito");
+        registrando = false;
+        setTimeout(() => window.location.href = "index.html", 1500);
+
+      } catch (err) {
+        registrando = false;
+        if (err.code === "auth/email-already-in-use") {
+          mostrarMensaje("Ese correo ya está registrado.", "error");
+        } else {
+          mostrarMensaje("Error al crear la cuenta. Intenta de nuevo.", "error");
+        }
+      }
+    };
+  </script>
+
+</body>
+</html>

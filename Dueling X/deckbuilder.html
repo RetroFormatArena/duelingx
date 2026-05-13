@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deckbuilder - DuelingX</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    /* ── Layout ── */
+    .db-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      grid-template-rows: auto 1fr;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Nav ── */
+    .db-nav {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 20px;
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .db-nav .logo {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-right: auto;
+    }
+
+    .db-nav select {
+      width: auto;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+    }
+
+    .db-nav input[type="text"] {
+      width: 200px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+    }
+
+    .db-nav button {
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      margin-top: 0;
+    }
+
+    /* ── Panel izquierdo: filtros + resultados ── */
+    .db-panel-izq {
+      background: var(--color-surface);
+      border-right: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .db-filtros {
+      padding: 12px;
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .db-filtros select,
+    .db-filtros input {
+      padding: 6px 10px;
+      font-size: 0.82rem;
+    }
+
+    .db-filtros .fila {
+      display: flex;
+      gap: 6px;
+    }
+
+    .db-resultados {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      padding: 8px;
+      align-content: start;
+      min-height: 0;
+    }
+
+    .db-paginacion {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 6px;
+      border-top: 1px solid var(--color-border);
+      flex-shrink: 0;
+    }
+
+    .db-paginacion button {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      border-radius: 4px;
+      margin-top: 0;
+      min-width: 30px;
+    }
+
+    .db-paginacion button.activa {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      font-weight: 700;
+    }
+
+    .db-paginacion button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* ── Drag & Drop ── */
+    .carta-mini[draggable="true"] { cursor: grab; }
+    .carta-mini[draggable="true"]:active { cursor: grabbing; }
+    .carta-deck[draggable="true"] { cursor: grab; }
+    .carta-deck[draggable="true"]:active { cursor: grabbing; }
+
+    .drop-zone-activa {
+      outline: 2px dashed var(--color-primary);
+      outline-offset: -2px;
+      background: rgba(0, 195, 255, 0.06);
+    }
+
+    .drop-zone-invalida {
+      outline: 2px dashed var(--color-danger);
+      outline-offset: -2px;
+    }
+
+    .db-panel-izq {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .db-scroll-resultados {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .db-scroll-resultados::-webkit-scrollbar { width: 5px; }
+    .db-scroll-resultados::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+    .carta-mini {
+      position: relative;
+      cursor: pointer;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid transparent;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+
+    .carta-mini:hover {
+      border-color: var(--color-primary);
+      transform: scale(1.05);
+      z-index: 10;
+    }
+
+    .carta-mini img {
+      width: 100%;
+      display: block;
+      border-radius: 4px;
+    }
+
+    .ban-icon {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    /* ── Panel derecho: deck ── */
+    .db-panel-der {
+      display: grid;
+      grid-template-rows: 1fr auto auto;
+      overflow: hidden;
+    }
+
+    .db-zona {
+      overflow-y: auto;
+      padding: 10px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .db-zona::-webkit-scrollbar { width: 5px; }
+    .db-zona::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+    .db-zona-titulo {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .db-zona-titulo span {
+      color: var(--color-primary);
+    }
+
+    .deck-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+    }
+
+    .carta-deck {
+      position: relative;
+      width: 52px;
+      cursor: pointer;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+
+    .carta-deck:hover {
+      border-color: var(--color-danger);
+    }
+
+    .carta-deck img {
+      width: 100%;
+      display: block;
+    }
+
+    .carta-deck .cantidad {
+      position: absolute;
+      bottom: 2px;
+      right: 3px;
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    /* ── Preview de carta ── */
+    .db-preview {
+      display: flex;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      min-height: 130px;
+    }
+
+    .db-preview img {
+      width: 80px;
+      border-radius: 6px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .db-preview-info {
+      font-size: 0.82rem;
+      line-height: 1.5;
+      overflow-y: auto;
+    }
+
+    .db-preview-info strong {
+      color: var(--color-primary);
+      font-size: 0.9rem;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .db-preview-info .stats {
+      color: var(--color-text-muted);
+      margin-bottom: 4px;
+    }
+
+    /* ── Acciones del deck ── */
+    .db-acciones {
+      display: flex;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      align-items: center;
+    }
+
+    .db-acciones input[type="text"] {
+      flex: 1;
+      padding: 7px 10px;
+      font-size: 0.85rem;
+    }
+
+    .db-acciones button {
+      padding: 7px 14px;
+      font-size: 0.85rem;
+      margin-top: 0;
+    }
+
+    #db-mensaje {
+      font-size: 0.82rem;
+      padding: 0 16px;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="db-layout">
+
+  <!-- NAV -->
+  <nav class="db-nav">
+    <span class="logo">DuelingX</span>
+    <label style="font-size:0.85rem; color:var(--color-text-muted)">Formato:</label>
+    <select id="db-formato" onchange="onCambiarFormato()">
+      <option value="goat">Goat</option>
+      <option value="edison">Edison</option>
+      <option value="critter">Critter</option>
+    </select>
+    <select id="db-decks-guardados" onchange="onCargarDeck()">
+      <option value="">-- Cargar deck --</option>
+    </select>
+    <a href="index.html"><button class="btn-secondary">← Inicio</button></a>
+  </nav>
+
+  <!-- PANEL IZQUIERDO: FILTROS + RESULTADOS -->
+  <aside class="db-panel-izq">
+    <div class="db-filtros">
+      <div class="fila">
+        <input type="text" id="f-nombre" placeholder="Buscar por nombre..." />
+        <button class="btn-primary" onclick="renderResultados()" style="white-space:nowrap; padding:6px 12px; margin-top:0">Buscar</button>
+      </div>
+      <select id="f-tipo" onchange="onCambiarTipoCarta()">
+        <option value="">Todos los tipos</option>
+        <optgroup label="── Monstruos ──">
+          <option value="effect-monster">Monstruo de Efecto</option>
+          <option value="normal-monster">Monstruo Normal</option>
+          <option value="fusion-monster">Monstruo de Fusión</option>
+          <option value="ritual-monster">Monstruo Ritual</option>
+        </optgroup>
+        <optgroup label="── Mágicas ──">
+          <option value="normal-spell">Mágica Normal</option>
+          <option value="continuous-spell">Mágica Continua</option>
+          <option value="equip-spell">Mágica de Equipo</option>
+          <option value="field-spell">Mágica de Campo</option>
+          <option value="quick-spell">Mágica de Juego Rápido</option>
+          <option value="ritual-spell">Mágica Ritual</option>
+        </optgroup>
+        <optgroup label="── Trampas ──">
+          <option value="normal-trap">Trampa Normal</option>
+          <option value="continuous-trap">Trampa Continua</option>
+          <option value="counter-trap">Trampa de Contador</option>
+        </optgroup>
+      </select>
+      <div class="fila" id="grupo-atributo-nivel">
+        <select id="f-atributo" onchange="renderResultados()">
+          <option value="">Atributo</option>
+          <option value="DARK">DARK</option>
+          <option value="LIGHT">LIGHT</option>
+          <option value="EARTH">EARTH</option>
+          <option value="WATER">WATER</option>
+          <option value="FIRE">FIRE</option>
+          <option value="WIND">WIND</option>
+          <option value="DIVINE">DIVINE</option>
+        </select>
+        <select id="f-nivel" onchange="renderResultados()">
+          <option value="">Nivel</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+          <option value="12">12</option>
+        </select>
+      </div>
+      <div class="fila" id="grupo-atk-def">
+        <input type="number" id="f-atk" placeholder="ATK" min="0" />
+        <input type="number" id="f-def" placeholder="DEF" min="0" />
+      </div>
+      <select id="f-tipo-raza" onchange="renderResultados()" id="grupo-raza">
+        <option value="">Tipo de monstruo</option>
+        <option value="Warrior">Guerrero</option>
+        <option value="Spellcaster">Mago</option>
+        <option value="Dragon">Dragón</option>
+        <option value="Zombie">Zombie</option>
+        <option value="Fiend">Demonio</option>
+        <option value="Fairy">Hada</option>
+        <option value="Beast">Bestia</option>
+        <option value="Beast-Warrior">Bestia Guerrera</option>
+        <option value="Machine">Máquina</option>
+        <option value="Aqua">Acuático</option>
+        <option value="Pyro">Fuego</option>
+        <option value="Thunder">Trueno</option>
+        <option value="Insect">Insecto</option>
+        <option value="Dinosaur">Dinosaurio</option>
+        <option value="Rock">Roca</option>
+        <option value="Plant">Planta</option>
+        <option value="Fish">Pez</option>
+        <option value="Sea Serpent">Serpiente Marina</option>
+        <option value="Reptile">Reptil</option>
+        <option value="Psychic">Psíquico</option>
+        <option value="Divine-Beast">Bestia Divina</option>
+      </select>
+      <select id="f-banlist" onchange="renderResultados()">
+        <option value="">Banlist</option>
+        <option value="0">Prohibida</option>
+        <option value="1">Limitada</option>
+        <option value="2">Semi-Limitada</option>
+        <option value="3">Sin Límite</option>
+      </select>
+      <select id="f-categoria" onchange="renderResultados()">
+        <option value="">Efecto / Categoría</option>
+      </select>
+      <button class="btn-secondary" onclick="limpiarFiltros()" style="width:100%">Limpiar filtros</button>
+    </div>
+    <div class="db-scroll-resultados">
+      <div class="db-resultados" id="db-resultados"></div>
+    </div>
+    <div class="db-paginacion" id="db-paginacion"></div>
+  </aside>
+
+  <!-- PANEL DERECHO: DECK -->
+  <div class="db-panel-der">
+
+    <!-- MAIN DECK -->
+    <div class="db-zona" id="zona-main" ondragover="onDragOver(event, 'main')" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'main')">
+      <div class="db-zona-titulo">
+        Main Deck <span id="contador-main">0 / 60</span>
+      </div>
+      <div class="deck-grid" id="grid-main"></div>
+    </div>
+
+    <!-- EXTRA + SIDE -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid var(--color-border)">
+      <div class="db-zona" id="zona-extra" style="border-right:1px solid var(--color-border); border-bottom:none" ondragover="onDragOver(event, 'extra')" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'extra')">
+        <div class="db-zona-titulo">Extra Deck <span id="contador-extra">0 / 15</span></div>
+        <div class="deck-grid" id="grid-extra"></div>
+      </div>
+      <div class="db-zona" id="zona-side" style="border-bottom:none" ondragover="onDragOver(event, 'side')" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'side')">
+        <div class="db-zona-titulo">Side Deck <span id="contador-side">0 / 15</span></div>
+        <div class="deck-grid" id="grid-side"></div>
+      </div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="db-preview" id="db-preview">
+      <img id="preview-img" src="" alt="" style="display:none" />
+      <div class="db-preview-info" id="preview-info">
+        <span style="color:var(--color-text-muted)">Pasa el cursor sobre una carta para ver su información.</span>
+      </div>
+    </div>
+
+    <!-- ACCIONES -->
+    <div id="db-mensaje" class="mensaje-error"></div>
+    <div class="db-acciones">
+      <input type="text" id="db-nombre-deck" placeholder="Nombre del deck..." />
+      <button class="btn-primary" onclick="guardarDeck()">Guardar</button>
+      <button class="btn-secondary" onclick="ordenarDeck()">Ordenar</button>
+      <button class="btn-danger" onclick="limpiarDeck()">Limpiar</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- CARTAS -->
+<script src="js/cartas/monstereffectDetailed.js"></script>
+<script src="js/cartas/monsterfusionDetailed.js"></script>
+<script src="js/cartas/monsternormalDetailed.js"></script>
+<script src="js/cartas/monsterritualDetailed.js"></script>
+<script src="js/cartas/spellcontinuousDetailed.js"></script>
+<script src="js/cartas/spellequipDetailed.js"></script>
+<script src="js/cartas/spellfieldDetailed.js"></script>
+<script src="js/cartas/spellnormalDetailed.js"></script>
+<script src="js/cartas/spellquickDetailed.js"></script>
+<script src="js/cartas/spellritualDetailed.js"></script>
+<script src="js/cartas/trapcontinuousDetailed.js"></script>
+<script src="js/cartas/trapcounterDetailed.js"></script>
+<script src="js/cartas/trapnormalDetailed.js"></script>
+<script src="js/cartas/unificador.js"></script>
+<script src="js/banlists/banlists.js"></script>
+<script src="js/deckbuilder.js"></script>
+
+<script type="module">
+  import { auth, db } from "./js/firebase.js";
+  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    collection, addDoc, getDocs, doc, getDoc, setDoc,
+    deleteDoc, serverTimestamp, query, orderBy
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  let usuarioActual = null;
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "sesion.html"; return; }
+    usuarioActual = user;
+    initCardPool();
+    llenarCategorias();
+    renderResultados();
+    await refrescarDecksGuardados();
+
+    // Enter en cualquier input de filtro dispara búsqueda
+    ["f-nombre", "f-atk", "f-def"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") renderResultados(); });
+    });
+  });
+
+  // ── Llenar select de categorías desde CARD_POOL ──
+  function llenarCategorias() {
+    const categorias = new Set();
+    for (const carta of Object.values(window.CARD_POOL)) {
+      for (const cat of (carta.category || [])) {
+        categorias.add(cat);
+      }
+    }
+    const select = document.getElementById("f-categoria");
+    const sorted = [...categorias].sort();
+    for (const cat of sorted) {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat;
+      select.appendChild(opt);
+    }
+  }
+
+  // ── Paginación ──
+  const POR_PAGINA = 24;
+  let paginaActual = 1;
+  let resultadosActuales = [];
+
+  function getfiltros() {
+    return {
+      nombre:    document.getElementById("f-nombre").value,
+      tipo:      document.getElementById("f-tipo").value,
+      atributo:  document.getElementById("f-atributo").value,
+      nivel:     document.getElementById("f-nivel").value,
+      banlist:   document.getElementById("f-banlist").value,
+      raza:      document.getElementById("f-tipo-raza").value,
+      atk:       document.getElementById("f-atk").value,
+      defVal:    document.getElementById("f-def").value,
+      categoria: document.getElementById("f-categoria").value,
+    };
+  }
+
+  function renderPagina(pagina) {
+    paginaActual = pagina;
+    const contenedor = document.getElementById("db-resultados");
+    contenedor.innerHTML = "";
+
+    const inicio = (pagina - 1) * POR_PAGINA;
+    const fin = inicio + POR_PAGINA;
+    const pagCartas = resultadosActuales.slice(inicio, fin);
+
+    for (const [key, carta] of pagCartas) {
+      const max = getMaxCopias(carta.name, deck.formato);
+
+      const div = document.createElement("div");
+      div.className = "carta-mini";
+      div.title = carta.name;
+
+      const img = document.createElement("img");
+      img.src = `recursos/cards/${key}.webp`;
+      img.alt = carta.name;
+      img.loading = "lazy";
+      div.appendChild(img);
+
+      if (max < 3) {
+        const banImg = document.createElement("img");
+        banImg.src = `recursos/ban_${max}.webp`;
+        banImg.className = "ban-icon";
+        div.appendChild(banImg);
+      }
+
+      if (max === 0) div.style.opacity = "0.35";
+
+      div.onclick = () => { if (max > 0) onAgregarCarta(key); };
+      div.oncontextmenu = (e) => { e.preventDefault(); if (max > 0) onAgregarAlSide(key); };
+      div.onmouseenter = () => mostrarPreview(key);
+      div.draggable = true;
+      div.ondragstart = (e) => onDragStartFiltro(e, key);
+
+      contenedor.appendChild(div);
+    }
+
+    renderPaginacion();
+  }
+
+  function renderPaginacion() {
+    const total = resultadosActuales.length;
+    const totalPags = Math.ceil(total / POR_PAGINA);
+    const pag = document.getElementById("db-paginacion");
+    pag.innerHTML = "";
+    if (totalPags <= 1) return;
+
+    const btnPrev = document.createElement("button");
+    btnPrev.textContent = "←";
+    btnPrev.disabled = paginaActual === 1;
+    btnPrev.onclick = () => renderPagina(paginaActual - 1);
+    pag.appendChild(btnPrev);
+
+    // Mostrar máximo 5 páginas alrededor de la actual
+    let inicio = Math.max(1, paginaActual - 2);
+    let fin = Math.min(totalPags, inicio + 4);
+    inicio = Math.max(1, fin - 4);
+
+    for (let i = inicio; i <= fin; i++) {
+      const btn = document.createElement("button");
+      btn.textContent = i;
+      if (i === paginaActual) btn.classList.add("activa");
+      btn.onclick = ((p) => () => renderPagina(p))(i);
+      pag.appendChild(btn);
+    }
+
+    const btnNext = document.createElement("button");
+    btnNext.textContent = "→";
+    btnNext.disabled = paginaActual === totalPags;
+    btnNext.onclick = () => renderPagina(paginaActual + 1);
+    pag.appendChild(btnNext);
+
+    // Contador
+    const info = document.createElement("span");
+    info.style.cssText = "font-size:0.75rem; color:var(--color-text-muted); margin-left:4px";
+    info.textContent = `${total} cartas`;
+    pag.appendChild(info);
+  }
+
+  // ── Render resultados de búsqueda ──
+  window.renderResultados = function() {
+    resultadosActuales = filtrarCartas(getfiltros());
+    paginaActual = 1;
+    renderPagina(1);
+  };
+
+  // ── Agregar carta al side desde panel de búsqueda ──
+  window.onAgregarAlSide = function(key) {
+    const resultado = agregarAlSide(key);
+    if (!resultado.ok) {
+      mostrarMensaje(resultado.msg, "error");
+      return;
+    }
+    mostrarMensaje("", "");
+    renderDeck();
+  };
+
+  // ── Agregar carta al deck ──
+  window.onAgregarCarta = function(key) {
+    const resultado = agregarCarta(key);
+    if (!resultado.ok) {
+      mostrarMensaje(resultado.msg, "error");
+      return;
+    }
+    mostrarMensaje("", "");
+    renderDeck();
+  };
+
+  // ── Render del deck ──
+  window.renderDeck = function() {
+    renderZona("main");
+    renderZona("extra");
+    renderZona("side");
+  };
+
+  function renderZona(zona) {
+    const grid = document.getElementById(`grid-${zona}`);
+    const contador = document.getElementById(`contador-${zona}`);
+    grid.innerHTML = "";
+
+    let total = 0;
+    for (const entrada of deck[zona]) {
+      total += entrada.cantidad;
+
+      // Una carta individual por cada copia
+      for (let i = 0; i < entrada.cantidad; i++) {
+        const div = document.createElement("div");
+        div.className = "carta-deck";
+        div.title = `${entrada.name} (clic para quitar)`;
+
+        const img = document.createElement("img");
+        img.src = `recursos/cards/${entrada.key}.webp`;
+        img.alt = entrada.name;
+        div.appendChild(img);
+
+        // Ícono de banlist encima de la carta
+        const max = getMaxCopias(entrada.name, deck.formato);
+        if (max < 3) {
+          const banImg = document.createElement("img");
+          banImg.src = `recursos/ban_${max}.webp`;
+          banImg.className = "ban-icon";
+          div.appendChild(banImg);
+        }
+
+        div.onclick = () => { quitarCarta(entrada.key, zona); renderDeck(); };
+        div.oncontextmenu = (e) => {
+          e.preventDefault();
+          if (zona !== "side") {
+            quitarCarta(entrada.key, zona);
+            const r = agregarAlSide(entrada.key);
+            if (!r.ok) mostrarMensaje(r.msg, "error");
+            renderDeck();
+          }
+        };
+        div.onmouseenter = () => mostrarPreview(entrada.key);
+        div.draggable = true;
+        div.ondragstart = (e) => onDragStartDeck(e, entrada.key, zona);
+
+        grid.appendChild(div);
+      }
+    }
+
+    const max = zona === "main" ? 60 : 15;
+    const min = zona === "main" ? 40 : 0;
+    contador.textContent = `${total} / ${max}`;
+    contador.style.color = total < min ? "var(--color-danger)" : "var(--color-primary)";
+  }
+
+  // ── Preview de carta ──
+  window.mostrarPreview = function(key) {
+    const carta = window.CARD_POOL[key];
+    if (!carta) return;
+
+    const img = document.getElementById("preview-img");
+    img.src = `recursos/cards/${key}.webp`;
+    img.style.display = "block";
+
+    const info = document.getElementById("preview-info");
+    const status = getBanlistStatus(carta.name, deck.formato);
+
+    let html = `<strong>${carta.name}</strong>`;
+    html += `<div class="stats">`;
+    if (carta.level) html += `Nivel ${carta.level} | `;
+    if (carta.attribute) html += `${carta.attribute} | `;
+    if (carta.type) html += `${carta.type}`;
+    html += `</div>`;
+    if (carta.atk !== null && carta.atk !== undefined) {
+      html += `<div class="stats">ATK ${carta.atk} / DEF ${carta.def}</div>`;
+    }
+    html += `<div style="color:var(--color-text-muted); margin-top:4px">${carta.effect || ""}</div>`;
+    html += `<div style="margin-top:6px; font-weight:600; color:${status === 'Forbidden' ? 'var(--color-danger)' : status === 'Limited' ? 'var(--color-warning)' : status === 'Semi-Limited' ? 'var(--color-success)' : 'var(--color-text-muted)'}">
+      ${status} en ${deck.formato}
+    </div>`;
+
+    info.innerHTML = html;
+  };
+
+  // ── Cambiar formato ──
+  window.onCambiarFormato = function() {
+    const nuevo = document.getElementById("db-formato").value;
+    const violaciones = cambiarFormato(nuevo);
+    if (violaciones.length > 0) {
+      mostrarMensaje(violaciones.join(" | "), "error");
+    }
+    renderResultados();
+    renderDeck();
+  };
+
+  // ── Limpiar filtros ──
+  // Tipos que NO son monstruo
+  const TIPOS_NO_MONSTRUO = ["normal-spell","continuous-spell","equip-spell","field-spell","quick-spell","ritual-spell","normal-trap","continuous-trap","counter-trap"];
+
+  window.onCambiarTipoCarta = function() {
+    const tipo = document.getElementById("f-tipo").value;
+    const esMagiaTrampa = TIPOS_NO_MONSTRUO.includes(tipo);
+    const campos = ["grupo-atributo-nivel", "grupo-atk-def"];
+    campos.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.opacity = esMagiaTrampa ? "0.35" : "1";
+        el.querySelectorAll("input, select").forEach(input => input.disabled = esMagiaTrampa);
+      }
+    });
+    const raza = document.getElementById("f-tipo-raza");
+    if (raza) {
+      raza.style.opacity = esMagiaTrampa ? "0.35" : "1";
+      raza.disabled = esMagiaTrampa;
+    }
+    if (esMagiaTrampa) {
+      document.getElementById("f-atributo").value = "";
+      document.getElementById("f-nivel").value = "";
+      document.getElementById("f-atk").value = "";
+      document.getElementById("f-def").value = "";
+      document.getElementById("f-tipo-raza").value = "";
+    }
+    renderResultados();
+  };
+
+  window.limpiarFiltros = function() {
+    document.getElementById("f-nombre").value = "";
+    document.getElementById("f-tipo").value = "";
+    document.getElementById("f-atributo").value = "";
+    document.getElementById("f-nivel").value = "";
+    document.getElementById("f-banlist").value = "";
+    document.getElementById("f-tipo-raza").value = "";
+    document.getElementById("f-atk").value = "";
+    document.getElementById("f-def").value = "";
+    document.getElementById("f-categoria").value = "";
+    // Rehabilitar campos bloqueados
+    ["grupo-atributo-nivel","grupo-atk-def"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.opacity = "1";
+        el.querySelectorAll("input, select").forEach(i => i.disabled = false);
+      }
+    });
+    const raza = document.getElementById("f-tipo-raza");
+    if (raza) { raza.style.opacity = "1"; raza.disabled = false; }
+    renderResultados();
+  };
+
+  // ── Ordenar deck ──
+  window.ordenarDeck = function() {
+    deck.main  = ordenarEntradas(deck.main);
+    deck.extra = ordenarEntradas(deck.extra);
+    deck.side  = ordenarEntradas(deck.side);
+    renderDeck();
+  };
+
+  // ── Limpiar deck ──
+  window.limpiarDeck = function() {
+    if (!confirm("¿Limpiar el deck actual?")) return;
+    deck.main = []; deck.extra = []; deck.side = [];
+    deckActualId = null;
+    document.getElementById("db-nombre-deck").value = "";
+    document.getElementById("db-decks-guardados").value = "";
+    renderDeck();
+  };
+
+  // ── Guardar deck en Firestore ──
+  // ID del deck actualmente cargado (null = deck nuevo)
+  let deckActualId = null;
+
+  window.guardarDeck = async function() {
+    if (!usuarioActual) return;
+    const nombre = document.getElementById("db-nombre-deck").value.trim();
+    if (!nombre) { mostrarMensaje("Ponle un nombre al deck.", "error"); return; }
+
+    try {
+      const colRef = collection(db, "usuarios", usuarioActual.uid, "decksGuardados");
+
+      if (deckActualId) {
+        // Deck ya existe con ese ID → actualizar
+        await setDoc(doc(colRef, deckActualId), {
+          ...serializarDeck(nombre),
+          actualizadoEn: serverTimestamp()
+        }, { merge: true });
+        mostrarMensaje("Deck actualizado.", "exito");
+      } else {
+        // Deck nuevo → buscar si ya existe uno con el mismo nombre
+        const snap = await getDocs(colRef);
+        const existente = snap.docs.find(d => d.data().nombre === nombre);
+
+        if (existente) {
+          // Mismo nombre → actualizar ese
+          deckActualId = existente.id;
+          await setDoc(doc(colRef, deckActualId), {
+            ...serializarDeck(nombre),
+            actualizadoEn: serverTimestamp()
+          }, { merge: true });
+          mostrarMensaje("Deck actualizado.", "exito");
+        } else {
+          // Nombre nuevo → crear
+          const ref = await addDoc(colRef, {
+            ...serializarDeck(nombre),
+            creadoEn: serverTimestamp()
+          });
+          deckActualId = ref.id;
+          mostrarMensaje("Deck guardado.", "exito");
+        }
+      }
+
+      await refrescarDecksGuardados();
+      document.getElementById("db-decks-guardados").value = deckActualId;
+    } catch (err) {
+      console.error(err);
+      mostrarMensaje("Error al guardar.", "error");
+    }
+  };
+
+  // ── Cargar deck desde selector ──
+  window.onCargarDeck = async function() {
+    if (!usuarioActual) return;
+    const id = document.getElementById("db-decks-guardados").value;
+    if (!id) return;
+
+    try {
+      const snap = await getDoc(doc(db, "usuarios", usuarioActual.uid, "decksGuardados", id));
+      if (!snap.exists()) return;
+      const data = snap.data();
+      deckActualId = id;
+      cargarDeckDesdeFirestore(data);
+      document.getElementById("db-formato").value = data.formato || "goat";
+      document.getElementById("db-nombre-deck").value = data.nombre || "";
+      renderDeck();
+      renderResultados();
+      mostrarMensaje("Deck cargado.", "exito");
+    } catch (err) {
+      mostrarMensaje("Error al cargar el deck.", "error");
+    }
+  };
+
+  // ── Refrescar lista de decks guardados ──
+  async function refrescarDecksGuardados() {
+    if (!usuarioActual) return;
+    const select = document.getElementById("db-decks-guardados");
+    const q = query(
+      collection(db, "usuarios", usuarioActual.uid, "decksGuardados"),
+      orderBy("creadoEn", "desc")
+    );
+    const snap = await getDocs(q);
+    select.innerHTML = `<option value="">-- Cargar deck --</option>`;
+    snap.forEach(d => {
+      const opt = document.createElement("option");
+      opt.value = d.id;
+      opt.textContent = d.data().nombre || d.id;
+      select.appendChild(opt);
+    });
+  }
+
+  // ── Drag & Drop ──
+  let dragData = null; // { key, desde } donde desde = "filtro" | "main" | "extra" | "side"
+
+  const EXTRA_CARD_TYPES = ["fusion-monster"];
+
+  function zonaValida(key, zonaDestino) {
+    const carta = window.CARD_POOL[key];
+    if (!carta) return false;
+    const esFusion = EXTRA_CARD_TYPES.includes(carta["card-type"]);
+    if (zonaDestino === "extra") return esFusion;
+    if (zonaDestino === "main") return !esFusion;
+    if (zonaDestino === "side") return true; // side acepta cualquier carta
+    return false;
+  }
+
+  window.onDragStartFiltro = function(e, key) {
+    dragData = { key, desde: "filtro" };
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
+  window.onDragStartDeck = function(e, key, zona) {
+    dragData = { key, desde: zona };
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  window.onDragOver = function(e, zonaDestino) {
+    e.preventDefault();
+    if (!dragData) return;
+    const zona = document.getElementById(`zona-${zonaDestino}`);
+    if (zonaValida(dragData.key, zonaDestino)) {
+      zona.classList.add("drop-zone-activa");
+      zona.classList.remove("drop-zone-invalida");
+      e.dataTransfer.dropEffect = dragData.desde === "filtro" ? "copy" : "move";
+    } else {
+      zona.classList.add("drop-zone-invalida");
+      zona.classList.remove("drop-zone-activa");
+      e.dataTransfer.dropEffect = "none";
+    }
+  };
+
+  window.onDragLeave = function(e) {
+    const zona = e.currentTarget;
+    zona.classList.remove("drop-zone-activa", "drop-zone-invalida");
+  };
+
+  window.onDrop = function(e, zonaDestino) {
+    e.preventDefault();
+    const zona = document.getElementById(`zona-${zonaDestino}`);
+    zona.classList.remove("drop-zone-activa", "drop-zone-invalida");
+    if (!dragData) return;
+
+    if (!zonaValida(dragData.key, zonaDestino)) {
+      mostrarMensaje("No puedes colocar esa carta aquí.", "error");
+      dragData = null;
+      return;
+    }
+
+    if (dragData.desde === "filtro") {
+      // Viene del panel de búsqueda → agregar
+      const carta = window.CARD_POOL[dragData.key];
+      const maxCopias = getMaxCopias(carta.name, deck.formato);
+      if (maxCopias === 0) {
+        mostrarMensaje(`${carta.name} está Forbidden en ${deck.formato}.`, "error");
+        dragData = null;
+        return;
+      }
+
+      // Agregar directo a la zona destino
+      const zona_arr = deck[zonaDestino];
+      const limiteZona = zonaDestino === "main" ? 60 : 15;
+      const totalZona = zona_arr.reduce((acc, c) => acc + c.cantidad, 0);
+      if (totalZona >= limiteZona) {
+        mostrarMensaje(`El ${zonaDestino} deck está lleno.`, "error");
+        dragData = null;
+        return;
+      }
+      const copiasTotal = contarCopiasTotales(carta.name);
+      if (copiasTotal >= maxCopias) {
+        mostrarMensaje(`Máximo ${maxCopias} copia(s) de ${carta.name}.`, "error");
+        dragData = null;
+        return;
+      }
+      const existente = zona_arr.find(c => c.key === dragData.key);
+      if (existente) {
+        existente.cantidad++;
+      } else {
+        zona_arr.push({ key: dragData.key, name: carta.name, cantidad: 1 });
+      }
+      mostrarMensaje("", "");
+
+    } else if (dragData.desde !== zonaDestino) {
+      // Viene de otra zona del deck → mover
+      quitarCarta(dragData.key, dragData.desde);
+      const carta = window.CARD_POOL[dragData.key];
+      const zona_arr = deck[zonaDestino];
+      const existente = zona_arr.find(c => c.key === dragData.key);
+      if (existente) {
+        existente.cantidad++;
+      } else {
+        zona_arr.push({ key: dragData.key, name: carta.name, cantidad: 1 });
+      }
+      mostrarMensaje("", "");
+    }
+
+    dragData = null;
+    renderDeck();
+  };
+
+  // ── Mostrar mensaje ──
+  function mostrarMensaje(texto, tipo) {
+    const el = document.getElementById("db-mensaje");
+    el.textContent = texto;
+    el.className = tipo === "error" ? "mensaje-error" : tipo === "exito" ? "mensaje-exito" : "";
+  }
+</script>
+
+</body>
+</html>
